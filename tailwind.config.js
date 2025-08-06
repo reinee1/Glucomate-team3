@@ -7,6 +7,9 @@ export default {
   ],
   theme: {
   	extend: {
+		fontFamily: {   
+			sans: ['santo', 'sans-serif'],      
+		  },
   		colors: {
   			primary: {
   				DEFAULT: 'hsl(var(--primary))',

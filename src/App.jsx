@@ -3,6 +3,7 @@ import HomePage from "./pages/homepage";
 import SignupPage from "./pages/signuppage";
 import LoginPage from "./pages/loginpage";
 import ChatbotPage from "./pages/chatbotpage";
+import AccountUpdatePage from "./pages/accountpage";
 
 export default function App() {
   return (
@@ -12,6 +13,7 @@ export default function App() {
         <Route path="/signuppage" element={<SignupPage />}></Route>
         <Route path="/login" element={<LoginPage />}></Route>
         <Route path="/chatbot" element={<ChatbotPage />}></Route>
+        <Route path="/accountpage" element={<AccountUpdatePage />}></Route>
       </Routes>
     </BrowserRouter>
   );

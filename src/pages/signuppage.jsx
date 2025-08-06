@@ -1,4 +1,7 @@
 import React, { useState } from "react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
 
 const SignUpPage = () => {
   const [formData, setFormData] = useState({
@@ -10,6 +13,7 @@ const SignUpPage = () => {
     weight: "",
     diabetesType: "",
     medications: "",
+    gender: "",
   });
 
   const diabetesTypes = [
@@ -20,8 +24,15 @@ const SignUpPage = () => {
     { value: "other", label: "Other" },
   ];
 
-  const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+  const genders = [
+    { value: "", label: "Select Gender" },
+    { value: "male", label: "Male" },
+    { value: "female", label: "Female" },
+    { value: "other", label: "Other" },
+  ];
+
+  const handleChange = (field, value) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
   const handleSubmit = (e) => {
@@ -46,141 +57,115 @@ const SignUpPage = () => {
           Sign Up
         </h2>
         <form onSubmit={handleSubmit} className="space-y-6">
+
           {/* Full Name */}
           <div>
-            <label
-              htmlFor="fullName"
-              className="block mb-2 font-medium text-gray-700"
-            >
-              Full Name
-            </label>
-            <input
-              type="text"
-              name="fullName"
+            <Label htmlFor="fullName">Full Name</Label>
+            <Input
               id="fullName"
+              type="text"
               required
               value={formData.fullName}
-              onChange={handleChange}
+              onChange={(e) => handleChange("fullName", e.target.value)}
               placeholder="Your full name"
-              className="w-full rounded-md border border-gray-300 px-4 py-3 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-700 focus:border-red-700 transition"
             />
           </div>
 
           {/* Email */}
           <div>
-            <label
-              htmlFor="email"
-              className="block mb-2 font-medium text-gray-700"
-            >
-              Email Address
-            </label>
-            <input
-              type="email"
-              name="email"
+            <Label htmlFor="email">Email Address</Label>
+            <Input
               id="email"
+              type="email"
               required
               value={formData.email}
-              onChange={handleChange}
+              onChange={(e) => handleChange("email", e.target.value)}
               placeholder="you@example.com"
-              className="w-full rounded-md border border-gray-300 px-4 py-3 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-700 focus:border-red-700 transition"
             />
           </div>
 
           {/* Password */}
           <div>
-            <label
-              htmlFor="password"
-              className="block mb-2 font-medium text-gray-700"
-            >
-              Password
-            </label>
-            <input
-              type="password"
-              name="password"
+            <Label htmlFor="password">Password</Label>
+            <Input
               id="password"
+              type="password"
               required
               value={formData.password}
-              onChange={handleChange}
+              onChange={(e) => handleChange("password", e.target.value)}
               placeholder="Create a password"
-              className="w-full rounded-md border border-gray-300 px-4 py-3 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-700 focus:border-red-700 transition"
             />
           </div>
 
           {/* Age */}
           <div>
-            <label htmlFor="age" className="block mb-2 font-medium text-gray-700">
-              Age
-            </label>
-            <input
-              type="number"
-              name="age"
+            <Label htmlFor="age">Age</Label>
+            <Input
               id="age"
+              type="number"
               min="0"
               required
               value={formData.age}
-              onChange={handleChange}
+              onChange={(e) => handleChange("age", e.target.value)}
               placeholder="Your age"
-              className="w-full rounded-md border border-gray-300 px-4 py-3 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-700 focus:border-red-700 transition"
             />
+          </div>
+
+          {/* Gender */}
+          <div>
+            <Label htmlFor="gender">Gender</Label>
+            <select
+              id="gender"
+              required
+              value={formData.gender}
+              onChange={(e) => handleChange("gender", e.target.value)}
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-red-700 focus:border-red-700 transition"
+            >
+              {genders.map(({ value, label }) => (
+                <option key={value} value={value} disabled={value === ""}>
+                  {label}
+                </option>
+              ))}
+            </select>
           </div>
 
           {/* Height */}
           <div>
-            <label
-              htmlFor="height"
-              className="block mb-2 font-medium text-gray-700"
-            >
-              Height (cm)
-            </label>
-            <input
-              type="number"
-              name="height"
+            <Label htmlFor="height">Height (cm)</Label>
+            <Input
               id="height"
+              type="number"
               min="0"
               required
               value={formData.height}
-              onChange={handleChange}
+              onChange={(e) => handleChange("height", e.target.value)}
               placeholder="Height in centimeters"
-              className="w-full rounded-md border border-gray-300 px-4 py-3 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-700 focus:border-red-700 transition"
             />
           </div>
 
           {/* Weight */}
           <div>
-            <label
-              htmlFor="weight"
-              className="block mb-2 font-medium text-gray-700"
-            >
-              Weight (kg)
-            </label>
-            <input
-              type="number"
-              name="weight"
+            <Label htmlFor="weight">Weight (kg)</Label>
+            <Input
               id="weight"
+              type="number"
               min="0"
               required
               value={formData.weight}
-              onChange={handleChange}
+              onChange={(e) => handleChange("weight", e.target.value)}
               placeholder="Weight in kilograms"
-              className="w-full rounded-md border border-gray-300 px-4 py-3 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-700 focus:border-red-700 transition"
             />
           </div>
 
           {/* Diabetes Type */}
           <div>
-            <label
-              htmlFor="diabetesType"
-              className="block mb-2 font-medium text-gray-700"
-            >
-              Type of Diabetes
-            </label>
+            <Label htmlFor="diabetesType">Type of Diabetes</Label>
             <select
               id="diabetesType"
-              name="diabetesType"
               required
               value={formData.diabetesType}
-              onChange={handleChange}
-              className="w-full rounded-md border border-gray-300 bg-white px-4 py-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-red-700 focus:border-red-700 transition"
+              onChange={(e) => handleChange("diabetesType", e.target.value)}
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-red-700 focus:border-red-700 transition"
             >
               {diabetesTypes.map(({ value, label }) => (
                 <option key={value} value={value} disabled={value === ""}>
@@ -192,29 +177,23 @@ const SignUpPage = () => {
 
           {/* Medications */}
           <div>
-            <label
-              htmlFor="medications"
-              className="block mb-2 font-medium text-gray-700"
-            >
-              Medications
-            </label>
+            <Label htmlFor="medications">Medications</Label>
             <textarea
               id="medications"
-              name="medications"
               rows={3}
-              placeholder="List any diabetes-related medications you take"
+              placeholder="List any diabetes-related medications"
               value={formData.medications}
-              onChange={handleChange}
-              className="w-full rounded-md border border-gray-300 px-4 py-3 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-700 focus:border-red-700 transition resize-none"
+              onChange={(e) => handleChange("medications", e.target.value)}
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-700 focus:border-red-700 resize-none"
             />
           </div>
 
-          <button
+          <Button
             type="submit"
             className="w-full bg-red-700 text-white font-bold py-3 rounded-md shadow-lg hover:bg-red-800 transition-colors duration-300 focus:outline-none focus:ring-4 focus:ring-red-700 focus:ring-opacity-50"
           >
             Create Account
-          </button>
+          </Button>
         </form>
 
         <p className="mt-6 text-center text-gray-700">

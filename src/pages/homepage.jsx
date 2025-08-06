@@ -3,6 +3,7 @@ import Header from "../components/header";// adjust the path if needed
 import HeroSection from "../components/herosection";
 import FunFactsSection from "../components/funfacts";
 import FeaturesSection from "../components/features";
+import HowItWorksSection from "../components/tutorial";
 
 
 const HomePage = () => {
@@ -21,6 +22,8 @@ const HomePage = () => {
         <FeaturesSection />
   
         <FunFactsSection />
+        
+        <HowItWorksSection />
   
         {/* Add footer if you want here */}
   
