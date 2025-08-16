@@ -1,57 +1,67 @@
-import React, { useState } from "react";
+"use client";
+
+import React from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { useNavigate } from "react-router-dom";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { Button } from "@/components/ui/button";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
-const LifestyleHabitsPage = () => {
-    const navigate = useNavigate(); 
-  const [formData, setFormData] = useState({
-    smokingStatus: "",
-    alcoholConsumption: "",
-    exerciseFrequency: ""
+// Validation schema
+const lifestyleSchema = z.object({
+  smokingStatus: z.string().min(1, "Please select your smoking status"),
+  alcoholConsumption: z.string().min(1, "Please select your alcohol consumption frequency"),
+  exerciseFrequency: z.string().min(1, "Please select your exercise frequency"),
+});
+
+export default function LifestyleHabitsPage() {
+  const navigate = useNavigate();
+  const form = useForm({
+    resolver: zodResolver(lifestyleSchema),
+    defaultValues: {
+      smokingStatus: "",
+      alcoholConsumption: "",
+      exerciseFrequency: "",
+    },
   });
-  const [errorMsg, setErrorMsg] = useState("");
 
-  const handleInputChange = (field, value) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value
-    }));
-  };
-
-  const handleSubmit = () => {
-    // Basic validation
-    if (!formData.smokingStatus || !formData.alcoholConsumption || !formData.exerciseFrequency) {
-      setErrorMsg("Please answer all questions.");
-      return;
-    }
-    
-    setErrorMsg("");
-    console.log("Lifestyle and Habits:", formData);
-    alert("Lifestyle information saved successfully!");
-    navigate("/chatbot"); // Navigate to another route
+  const onSubmit = async (data) => {
+    console.log("Lifestyle data:", data);
+    // Here you would typically send data to your API
+    navigate("/monitorform");
   };
 
   const smokingOptions = [
     { value: "never", label: "Never Smoked" },
     { value: "former", label: "Former Smoker" },
-    { value: "current", label: "Current Smoker" }
+    { value: "current", label: "Current Smoker" },
   ];
 
   const alcoholOptions = [
     { value: "never", label: "Never" },
     { value: "occasionally", label: "Occasionally" },
-    { value: "frequently", label: "Frequently" }
+    { value: "frequently", label: "Frequently" },
   ];
 
   const exerciseOptions = [
     { value: "sedentary", label: "Sedentary (Little to no exercise)" },
     { value: "light", label: "Light (1-2 times/week)" },
     { value: "moderate", label: "Moderate (3-4 times/week)" },
-    { value: "active", label: "Active (5+ times per week)" }
+    { value: "active", label: "Active (5+ times per week)" },
   ];
 
   return (
     <div
-      className="min-h-screen flex items-center justify-center px-6 py-12 relative bg-white"
+      className="min-h-screen flex items-center justify-center px-6 py-12 bg-cover bg-center"
       style={{
         backgroundImage:
           'url("https://news.ki.se/sites/nyheter/files/qbank/blood-1813410_1920_pixabay-custom20211103151915.jpg")',
@@ -61,93 +71,134 @@ const LifestyleHabitsPage = () => {
         filter: "brightness(1)",
       }}
     >
-      <div className="relative max-w-2xl w-full bg-white rounded-lg p-12 border border-red-200 z-10">
-        <h2 className="text-4xl font-extrabold text-red-800 mb-8 text-center select-none">
+      <div className="w-full max-w-md bg-white rounded-lg p-8 shadow-lg border border-red-700">
+        <h2 className="text-3xl font-extrabold text-red-700 mb-6 text-center">
           Lifestyle & Habits
         </h2>
-        
-        {errorMsg && (
-          <p className="text-red-600 mb-6 text-center font-semibold">{errorMsg}</p>
-        )}
 
-        <div className="space-y-10">
-          
-          {/* Smoking Status */}
-          <div>
-            <label className="block mb-6 font-medium text-gray-700 text-lg">
-              Smoking Status *
-            </label>
-            <div className="space-y-4">
-              {smokingOptions.map((option) => (
-                <label key={option.value} className="flex items-center space-x-3 cursor-pointer p-3 rounded-lg hover:bg-gray-50 transition-colors">
-                  <input
-                    type="radio"
-                    name="smokingStatus"
-                    value={option.value}
-                    checked={formData.smokingStatus === option.value}
-                    onChange={(e) => handleInputChange('smokingStatus', e.target.value)}
-                    className="w-5 h-5 text-red-600 bg-gray-100 border-gray-300 focus:ring-red-500 focus:ring-2"
-                  />
-                  <span className="text-gray-700 font-medium text-lg">{option.label}</span>
-                </label>
-              ))}
-            </div>
-          </div>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            {/* Smoking Status */}
+            <FormField
+              control={form.control}
+              name="smokingStatus"
+              render={({ field }) => (
+                <FormItem className="space-y-3">
+                  <FormLabel className="text-base text-black">Smoking Status *</FormLabel>
+                  <FormControl>
+                    <RadioGroup
+                      onValueChange={field.onChange}
+                      defaultValue={field.value}
+                      className="flex flex-col space-y-2"
+                    >
+                      {smokingOptions.map((option) => (
+                        <FormItem
+                          key={option.value}
+                          className="flex items-center space-x-3 space-y-0"
+                        >
+                          <FormControl>
+                            <RadioGroupItem 
+                              value={option.value} 
+                              className="text-black border-gray-400"
+                            />
+                          </FormControl>
+                          <FormLabel className="font-normal text-black">
+                            {option.label}
+                          </FormLabel>
+                        </FormItem>
+                      ))}
+                    </RadioGroup>
+                  </FormControl>
+                  <FormMessage className="text-red-600" />
+                </FormItem>
+              )}
+            />
 
-          {/* Alcohol Consumption */}
-          <div>
-            <label className="block mb-6 font-medium text-gray-700 text-lg">
-              Alcohol Consumption *
-            </label>
-            <div className="space-y-4">
-              {alcoholOptions.map((option) => (
-                <label key={option.value} className="flex items-center space-x-3 cursor-pointer p-3 rounded-lg hover:bg-gray-50 transition-colors">
-                  <input
-                    type="radio"
-                    name="alcoholConsumption"
-                    value={option.value}
-                    checked={formData.alcoholConsumption === option.value}
-                    onChange={(e) => handleInputChange('alcoholConsumption', e.target.value)}
-                    className="w-5 h-5 text-red-600 bg-gray-100 border-gray-300 focus:ring-red-500 focus:ring-2"
-                  />
-                  <span className="text-gray-700 font-medium text-lg">{option.label}</span>
-                </label>
-              ))}
-            </div>
-          </div>
+            {/* Alcohol Consumption */}
+            <FormField
+              control={form.control}
+              name="alcoholConsumption"
+              render={({ field }) => (
+                <FormItem className="space-y-3">
+                  <FormLabel className="text-base text-black">
+                    Alcohol Consumption *
+                  </FormLabel>
+                  <FormControl>
+                    <RadioGroup
+                      onValueChange={field.onChange}
+                      defaultValue={field.value}
+                      className="flex flex-col space-y-2"
+                    >
+                      {alcoholOptions.map((option) => (
+                        <FormItem
+                          key={option.value}
+                          className="flex items-center space-x-3 space-y-0"
+                        >
+                          <FormControl>
+                            <RadioGroupItem 
+                              value={option.value} 
+                              className="text-black border-gray-400"
+                            />
+                          </FormControl>
+                          <FormLabel className="font-normal text-black">
+                            {option.label}
+                          </FormLabel>
+                        </FormItem>
+                      ))}
+                    </RadioGroup>
+                  </FormControl>
+                  <FormMessage className="text-red-600" />
+                </FormItem>
+              )}
+            />
 
-          {/* Exercise Frequency */}
-          <div>
-            <label className="block mb-6 font-medium text-gray-700 text-lg">
-              Exercise Frequency *
-            </label>
-            <div className="space-y-4">
-              {exerciseOptions.map((option) => (
-                <label key={option.value} className="flex items-center space-x-3 cursor-pointer p-3 rounded-lg hover:bg-gray-50 transition-colors">
-                  <input
-                    type="radio"
-                    name="exerciseFrequency"
-                    value={option.value}
-                    checked={formData.exerciseFrequency === option.value}
-                    onChange={(e) => handleInputChange('exerciseFrequency', e.target.value)}
-                    className="w-5 h-5 text-red-600 bg-gray-100 border-gray-300 focus:ring-red-500 focus:ring-2"
-                  />
-                  <span className="text-gray-700 font-medium text-lg">{option.label}</span>
-                </label>
-              ))}
-            </div>
-          </div>
+            {/* Exercise Frequency */}
+            <FormField
+              control={form.control}
+              name="exerciseFrequency"
+              render={({ field }) => (
+                <FormItem className="space-y-3">
+                  <FormLabel className="text-base text-black">
+                    Exercise Frequency *
+                  </FormLabel>
+                  <FormControl>
+                    <RadioGroup
+                      onValueChange={field.onChange}
+                      defaultValue={field.value}
+                      className="flex flex-col space-y-2"
+                    >
+                      {exerciseOptions.map((option) => (
+                        <FormItem
+                          key={option.value}
+                          className="flex items-center space-x-3 space-y-0"
+                        >
+                          <FormControl>
+                            <RadioGroupItem 
+                              value={option.value} 
+                              className="text-black border-gray-400"
+                            />
+                          </FormControl>
+                          <FormLabel className="font-normal text-black">
+                            {option.label}
+                          </FormLabel>
+                        </FormItem>
+                      ))}
+                    </RadioGroup>
+                  </FormControl>
+                  <FormMessage className="text-red-600" />
+                </FormItem>
+              )}
+            />
 
-          <button
-            onClick={handleSubmit}
-            className="w-full bg-red-700 hover:bg-red-800 text-white font-bold py-3 rounded-md shadow-lg transition-colors duration-300"
-          >
-            Next
-          </button>
-        </div>
+            <Button
+              type="submit"
+              className="w-full bg-red-700 text-white font-bold py-3 rounded-md hover:bg-red-800"
+            >
+              Next
+            </Button>
+          </form>
+        </Form>
       </div>
     </div>
   );
-};
-
-export default LifestyleHabitsPage;
+}
