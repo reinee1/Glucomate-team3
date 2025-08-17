@@ -53,7 +53,7 @@ const medicalHistorySchema = z.object({
   insulinType: z.string().optional(),
   insulinDosage: z.string().optional(),
   insulinSchedule: z.string().optional(),
-  allergies: z.string().optional(),
+  allergies: z.array(z.string()).optional(),
 }).superRefine((data, ctx) => {
   if (data.medicalConditions?.includes("Other") && !data.otherCondition) {
     ctx.addIssue({
@@ -109,11 +109,11 @@ export default function MedicalHistoryPage() {
       insulinType: "",
       insulinDosage: "",
       insulinSchedule: "",
-      allergies: ""
+      allergies: [""]
     },
   });
 
-  const { watch, setValue, control } = form;
+  const { watch, setValue, control, getValues } = form;
   const medicalConditions = watch("medicalConditions");
   const familyHeartDisease = watch("familyHeartDisease");
   const takingInsulin = watch("takingInsulin");
@@ -122,6 +122,31 @@ export default function MedicalHistoryPage() {
     console.log("Medical History:", data);
     alert("Medical history saved successfully!");
     navigate("/lifestyleform");
+  };
+
+  // Handle adding new allergy input
+  const addAllergyInput = () => {
+    const currentAllergies = getValues("allergies") || [""];
+    setValue("allergies", [...currentAllergies, ""]);
+  };
+
+  // Handle removing an allergy input
+  const removeAllergyInput = (index) => {
+    const currentAllergies = getValues("allergies") || [""];
+    if (currentAllergies.length > 1) {
+      setValue(
+        "allergies",
+        currentAllergies.filter((_, i) => i !== index)
+      );
+    }
+  };
+
+  // Handle allergy input change
+  const handleAllergyChange = (index, value) => {
+    const currentAllergies = getValues("allergies") || [""];
+    const newAllergies = [...currentAllergies];
+    newAllergies[index] = value;
+    setValue("allergies", newAllergies);
   };
 
   return (
@@ -211,7 +236,7 @@ export default function MedicalHistoryPage() {
               />
             )}
 
-            {/* Family History - Radio buttons will never turn red */}
+            {/* Family History */}
             <FormField
               control={control}
               name="familyHeartDisease"
@@ -279,7 +304,7 @@ export default function MedicalHistoryPage() {
               />
             )}
 
-            {/* Insulin - Radio buttons will never turn red */}
+            {/* Insulin */}
             <FormField
               control={control}
               name="takingInsulin"
@@ -393,26 +418,43 @@ export default function MedicalHistoryPage() {
               </div>
             )}
 
-            {/* Allergies */}
-            <FormField
-              control={control}
-              name="allergies"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="text-base text-gray-900">
-                    Allergies (List all that apply)
-                  </FormLabel>
-                  <FormControl>
-                    <Textarea
-                      {...field}
-                      placeholder="Please list any allergies (medications, foods, environmental, etc.)"
-                      rows={3}
-                      className="w-full border-gray-300"
-                    />
-                  </FormControl>
-                </FormItem>
-              )}
-            />
+            {/* Allergies - Multiple Input Fields */}
+            <div className="space-y-2">
+              <FormLabel className="text-base text-gray-900">
+                Allergies (List all that apply)
+              </FormLabel>
+              {watch("allergies")?.map((allergy, index) => (
+                <div key={index} className="flex items-center gap-2">
+                  <Input
+                    value={allergy}
+                    onChange={(e) => handleAllergyChange(index, e.target.value)}
+                    placeholder={`Allergy #${index + 1}`}
+                    className="flex-1 border-gray-300"
+                  />
+                  {index === watch("allergies")?.length - 1 ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={addAllergyInput}
+                      className="h-10 w-10 border-gray-300"
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  ) : (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={() => removeAllergyInput(index)}
+                      className="h-10 w-10 border-gray-300 text-red-600"
+                    >
+                      ×
+                    </Button>
+                  )}
+                </div>
+              ))}
+            </div>
 
             <Button
               type="submit"

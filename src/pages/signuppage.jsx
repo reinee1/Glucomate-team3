@@ -1,9 +1,10 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Eye, EyeOff } from "lucide-react";
 import {
   Form,
   FormControl,
@@ -25,7 +26,7 @@ const signupSchema = z
       .string()
       .min(1, "Password is required")
       .min(8, "Password must be at least 8 characters"),
-    confirmPassword: z.string().min(1, " Confirm Password is required"),
+    confirmPassword: z.string().min(1, "Confirm Password is required"),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: "Passwords do not match",
@@ -33,6 +34,9 @@ const signupSchema = z
   });
 
 export default function SignUpForm() {
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
   const form = useForm({
     resolver: zodResolver(signupSchema),
     defaultValues: {
@@ -71,8 +75,8 @@ export default function SignUpForm() {
         filter: "brightness(1)",
       }}
     >
-      <div className="w-full max-w-md bg-white rounded-lg p-8 shadow-lg border border-red-700">
-        <h2 className="text-3xl font-extrabold text-red-700 mb-6 text-center">
+      <div className="w-full max-w-md bg-white rounded-lg p-8 shadow-lg border border-gray-300">
+        <h2 className="text-3xl font-extrabold text-gray-900 mb-6 text-center">
           Sign Up
         </h2>
 
@@ -85,19 +89,15 @@ export default function SignUpForm() {
                 name="firstName"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>First Name</FormLabel>
+                    <FormLabel className="text-gray-900">First Name</FormLabel>
                     <FormControl>
                       <Input
                         placeholder="First Name"
                         {...field}
-                        className={
-                          form.formState.errors.firstName
-                            ? "border-red-600 focus:ring-red-600"
-                            : ""
-                        }
+                        className="border-gray-300 focus:ring-gray-500 focus:border-gray-500"
                       />
                     </FormControl>
-                    <FormMessage />
+                    <FormMessage className="text-red-600 text-sm" />
                   </FormItem>
                 )}
               />
@@ -108,19 +108,15 @@ export default function SignUpForm() {
                 name="lastName"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Last Name</FormLabel>
+                    <FormLabel className="text-gray-900">Last Name</FormLabel>
                     <FormControl>
                       <Input
                         placeholder="Last Name"
                         {...field}
-                        className={
-                          form.formState.errors.lastName
-                            ? "border-red-600 focus:ring-red-600"
-                            : ""
-                        }
+                        className="border-gray-300 focus:ring-gray-500 focus:border-gray-500"
                       />
                     </FormControl>
-                    <FormMessage />
+                    <FormMessage className="text-red-600 text-sm" />
                   </FormItem>
                 )}
               />
@@ -132,20 +128,16 @@ export default function SignUpForm() {
               name="email"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Email</FormLabel>
+                  <FormLabel className="text-gray-900">Email</FormLabel>
                   <FormControl>
                     <Input
                       type="email"
                       placeholder="you@example.com"
                       {...field}
-                      className={
-                        form.formState.errors.email
-                          ? "border-red-600 focus:ring-red-600"
-                          : ""
-                      }
+                      className="border-gray-300 focus:ring-gray-500 focus:border-gray-500"
                     />
                   </FormControl>
-                  <FormMessage />
+                  <FormMessage className="text-red-600 text-sm" />
                 </FormItem>
               )}
             />
@@ -156,20 +148,29 @@ export default function SignUpForm() {
               name="password"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Password</FormLabel>
+                  <FormLabel className="text-gray-900">Password</FormLabel>
                   <FormControl>
-                    <Input
-                      type="password"
-                      placeholder="Create a password"
-                      {...field}
-                      className={
-                        form.formState.errors.password
-                          ? "border-red-600 focus:ring-red-600"
-                          : ""
-                      }
-                    />
+                    <div className="relative">
+                      <Input
+                        type={showPassword ? "text" : "password"}
+                        placeholder="Create a password"
+                        {...field}
+                        className="border-gray-300 focus:ring-gray-500 focus:border-gray-500 pr-10"
+                      />
+                      <button
+                        type="button"
+                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                        onClick={() => setShowPassword(!showPassword)}
+                      >
+                        {showPassword ? (
+                          <Eye className="h-5 w-5" />
+                        ) : (
+                          <EyeOff className="h-5 w-5" />
+                        )}
+                      </button>
+                    </div>
                   </FormControl>
-                  <FormMessage />
+                  <FormMessage className="text-red-600 text-sm" />
                 </FormItem>
               )}
             />
@@ -180,20 +181,29 @@ export default function SignUpForm() {
               name="confirmPassword"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Confirm Password</FormLabel>
+                  <FormLabel className="text-gray-900">Confirm Password</FormLabel>
                   <FormControl>
-                    <Input
-                      type="password"
-                      placeholder="Confirm password"
-                      {...field}
-                      className={
-                        form.formState.errors.confirmPassword
-                          ? "border-red-600 focus:ring-red-600"
-                          : ""
-                      }
-                    />
+                    <div className="relative">
+                      <Input
+                        type={showConfirmPassword ? "text" : "password"}
+                        placeholder="Confirm password"
+                        {...field}
+                        className="border-gray-300 focus:ring-gray-500 focus:border-gray-500 pr-10"
+                      />
+                      <button
+                        type="button"
+                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      >
+                        {showConfirmPassword ? (
+                          <Eye className="h-5 w-5" />
+                        ) : (
+                          <EyeOff className="h-5 w-5" />
+                        )}
+                      </button>
+                    </div>
                   </FormControl>
-                  <FormMessage />
+                  <FormMessage className="text-red-600 text-sm" />
                 </FormItem>
               )}
             />
