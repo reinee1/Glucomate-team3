@@ -64,7 +64,7 @@ export default function LifestyleHabitsPage() {
       className="min-h-screen flex items-center justify-center px-6 py-12 bg-cover bg-center"
       style={{
         backgroundImage:
-          'url("https://news.ki.se/sites/nyheter/files/qbank/blood-1813410_1920_pixabay-custom20211103151915.jpg")',
+          'url("/public/Image 1.jpg")',
         backgroundSize: "cover",
         backgroundPosition: "center",
         backgroundRepeat: "no-repeat",
