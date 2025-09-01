@@ -1,6 +1,8 @@
 import React, { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
-import Header from "../components/header";  // <-- Correct import with capital H
+import Header from "../components/header";
+import { AudioLines } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 // Modal component with a soft design
 const Modal = ({ message, onClose }) => {
@@ -27,16 +29,71 @@ const ChatbotPage = () => {
     {
       id: 1,
       sender: "bot",
-      text: "Hello! I’m your GlucoMate AI. Ask me anything about health, nutrition, or blood sugar management.",
+      text: "Hello! I'm your GlucoMate AI. Ask me anything about health, nutrition, or blood sugar management.",
     },
   ]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isListening, setIsListening] = useState(false);
   const messagesEndRef = useRef(null);
+  const recognitionRef = useRef(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  useEffect(() => {
+    // Initialize speech recognition
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    
+    if (SpeechRecognition) {
+      const recognition = new SpeechRecognition();
+      recognition.continuous = false;
+      recognition.interimResults = false;
+      recognition.lang = 'en-US';
+      
+      recognition.onresult = (event) => {
+        const transcript = event.results[0][0].transcript;
+        setInput(prev => prev + transcript);
+        setIsListening(false);
+      };
+      
+      recognition.onerror = (event) => {
+        console.error('Speech recognition error', event.error);
+        setIsListening(false);
+      };
+      
+      recognition.onend = () => {
+        setIsListening(false);
+      };
+      
+      recognitionRef.current = recognition;
+    } else {
+      console.warn('Speech recognition not supported in this browser');
+    }
+    
+    return () => {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
+    };
+  }, []);
+
+  const toggleListening = () => {
+    if (isListening) {
+      recognitionRef.current.stop();
+      setIsListening(false);
+    } else {
+      recognitionRef.current.start();
+      setIsListening(true);
+    }
+  };
+
+  // Function to navigate to voice chat page
+  const goToVoiceChat = () => {
+    navigate('/voicechat');
+  };
 
   const getBotReply = async (userMessage) => {
     // Construct chat history payload for Gemini API
@@ -135,7 +192,7 @@ const ChatbotPage = () => {
             <path
               strokeLinecap="round"
               strokeLinejoin="round"
-              d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"
+              d="M8 10h.01M12 10h.00M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"
             />
           </svg>
           <h2 className="text-3xl font-bold tracking-tight">GlucoMate Chatbot</h2>
@@ -172,22 +229,55 @@ const ChatbotPage = () => {
         {/* Input form */}
         <form onSubmit={handleSubmit} className="p-6 border-t border-gray-100 bg-white">
           <div className="flex items-center space-x-4">
-            <input
-              type="text"
-              placeholder="Ask me about your health..."
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              className="flex-grow rounded-full border border-gray-300 px-6 py-3 text-lg focus:outline-none focus:border-red-700 focus:ring-1 focus:ring-red-700 transition-all duration-300"
-              disabled={isLoading}
-            />
+            <div className="relative flex-grow">
+              <input
+                type="text"
+                placeholder="Ask me about your health..."
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                className="w-full rounded-full border border-gray-300 px-6 py-3 text-lg focus:outline-none focus:border-red-700 focus:ring-1 focus:ring-red-700 transition-all duration-300 pr-12"
+                disabled={isLoading}
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    handleSubmit(e);
+                  }
+                }}
+              />
+              <button
+                type="button"
+                onClick={toggleListening}
+                disabled={isLoading}
+                className={`absolute right-3 top-1/2 transform -translate-y-1/2 p-2 rounded-full ${
+                  isListening 
+                    ? "bg-red-800 text-white animate-pulse" 
+                    : "text-gray-500 hover:text-red-800 hover:bg-gray-100"
+                } transition-colors duration-300`}
+              >
+                <svg 
+                  xmlns="http://www.w3.org/2000/svg" 
+                  className="h-6 w-6" 
+                  fill="none" 
+                  viewBox="0 0 24 24" 
+                  stroke="currentColor"
+                >
+                  <path 
+                    strokeLinecap="round" 
+                    strokeLinejoin="round" 
+                    strokeWidth={2} 
+                    d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" 
+                  />
+                </svg>
+              </button>
+            </div>
             <button
-              type="submit"
-              className={`bg-red-800 text-white font-semibold px-6 py-3 rounded-full shadow-lg hover:bg-red-900 transition-colors duration-300 transform active:scale-95 ${
+              type="button"
+              onClick={goToVoiceChat}
+              className={`bg-red-800 text-white font-semibold p-3 rounded-full shadow-lg hover:bg-red-900 transition-colors duration-300 transform active:scale-95 ${
                 isLoading ? "opacity-50 cursor-not-allowed" : ""
               }`}
               disabled={isLoading}
             >
-              Send
+              <AudioLines size={24} />
             </button>
           </div>
         </form>

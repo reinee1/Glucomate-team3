@@ -8,11 +8,13 @@ import PersonalInfoPage from "./pages/personalinfoform";
 import MedicalHistoryPage from "./pages/medicalhistoryform";
 import MonitoringControlPage from "./pages/monitorform";
 import LifestyleHabitsPage from "./pages/lifestyleform";
+import VoiceChatPage from './pages/VoiceChat';
+
 export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<HomePage />}> </Route>
+        <Route path="/" element={<HomePage />}></Route>
         <Route path="/signuppage" element={<SignupPage />}></Route>
         <Route path="/login" element={<LoginPage />}></Route>
         <Route path="/chatbot" element={<ChatbotPage />}></Route>
@@ -21,6 +23,7 @@ export default function App() {
         <Route path="/medicalinfo" element={<MedicalHistoryPage />}></Route>
         <Route path="/monitorform" element={<MonitoringControlPage />}></Route>
         <Route path="/lifestyleform" element={<LifestyleHabitsPage />}></Route>
+        <Route path="/voicechatpage" element={<VoiceChatPage />} />
       </Routes>
     </BrowserRouter>
   );
