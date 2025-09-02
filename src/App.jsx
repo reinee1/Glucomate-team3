@@ -9,6 +9,7 @@ import MedicalHistoryPage from "./pages/medicalhistoryform";
 import MonitoringControlPage from "./pages/monitorform";
 import LifestyleHabitsPage from "./pages/lifestyleform";
 import VoiceChatPage from './pages/VoiceChat';
+import VerifyEmail from "./pages/verifyemail";
 
 export default function App() {
   return (
@@ -24,6 +25,8 @@ export default function App() {
         <Route path="/monitorform" element={<MonitoringControlPage />}></Route>
         <Route path="/lifestyleform" element={<LifestyleHabitsPage />}></Route>
         <Route path="/voicechatpage" element={<VoiceChatPage />} />
+        <Route path="/verify" element={<VerifyEmail />} />
+
       </Routes>
     </BrowserRouter>
   );

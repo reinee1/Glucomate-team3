@@ -64,11 +64,81 @@ export default function PersonalInfoPage() {
   }, [weightUnit, setValue]);
 
   const onSubmit = async (data) => {
-    console.log("Personal Info:", data);
-    alert("Personal information saved successfully!");
-    navigate("/medicalinfo");
+    const token = localStorage.getItem("accessToken");
+    if (!token) {
+      alert("Please log in first.");
+      navigate("/login");
+      return;
+    }
+  
+    // Date parts
+    const d = data.birthDate;
+    const birthYear = d.getFullYear();
+    const birthMonth = d.getMonth() + 1; // 0-based -> 1-based
+    const birthDay = d.getDate();
+  
+    // Height: ensure centimeters are sent
+    let heightCm = Number(data.height);
+    if (data.heightUnit === "ft/in") {
+      // Your slider looks like inches (36–96). Convert inches -> cm.
+      heightCm = Math.round(Number(data.height) * 2.54 * 10) / 10;
+    }
+    // If unit is cm in the UI, heightCm is already in cm.
+  
+    // Weight: ensure kilograms are sent
+    let weightKg = Number(data.weight);
+    if (data.weightUnit === "lb") {
+      weightKg = Math.round(Number(data.weight) * 0.453592 * 10) / 10;
+    }
+  
+    const payload = {
+      birthYear,
+      birthMonth,
+      birthDay,
+      gender: data.gender,
+      height: String(heightCm),
+      heightUnit: "cm",        // send metric to avoid backend’s ft/in conversion path
+      weight: String(weightKg),
+      weightUnit: "kg",        // send metric
+      diabetesType: data.diabetesType,
+      diagnosisYear: data.diagnosisYear,
+    };
+  
+    try {
+      const res = await fetch("/api/v1/medical-profile/personalinfo", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`, // JWT for @jwt_required()
+        },
+        body: JSON.stringify(payload),
+      });
+  
+      // Safe parse (handles non-JSON/empty)
+      const text = await res.text();
+      let json = null;
+      try { json = text ? JSON.parse(text) : null; } catch {}
+  
+      if (res.ok) {
+        // Backend returns 201 on success
+        // You can show a toast/snackbar if you’d like
+        navigate("/medicalinfo");
+        return;
+      }
+  
+      if (res.status === 401) {
+        alert(json?.message || "Session expired. Please log in again.");
+        navigate("/login");
+      } else if (res.status === 422) {
+        alert(json?.message || "Please fill all required fields.");
+      } else {
+        alert(json?.message || `Save failed (${res.status}).`);
+      }
+    } catch (e) {
+      alert("Network error. Please try again.");
+    }
   };
-
+  
   return (
     <div
       className="min-h-screen flex items-center justify-center px-6 py-12 bg-cover bg-center"

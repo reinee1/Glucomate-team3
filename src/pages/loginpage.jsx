@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 // Validation schema
 const loginSchema = z.object({
@@ -22,7 +22,13 @@ const loginSchema = z.object({
   password: z.string().min(1, "Password is required"),
 });
 
+
 export default function LoginPage() {
+  const navigate = useNavigate();
+  const [serverMsg, setServerMsg] = useState("");
+  const [serverErr, setServerErr] = useState("");
+  const [loading, setLoading] = useState(false);
+
   const form = useForm({
     resolver: zodResolver(loginSchema),
     defaultValues: {
@@ -31,17 +37,47 @@ export default function LoginPage() {
     },
   });
 
-  const onSubmit = (values) => {
-    console.log("Logging in with", values);
-    // Your API call here
+  const onSubmit = async (values) => {
+    setServerMsg("");
+    setServerErr("");
+    setLoading(true);
+
+    try {
+      const response = await fetch("http://127.0.0.1:5000/api/v1/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: values.email.trim().toLowerCase(),
+          password: values.password,
+        }),
+      });
+
+      const json = await response.json().catch(() => ({}));
+
+      if (response.ok && (json?.success ?? true)) {
+        // ✅ save token to localStorage (or cookies)
+        if (json.access_token) {
+          localStorage.setItem("accessToken", json.access_token);
+        }
+
+        setServerMsg(json?.message || "Login successful!");
+        // redirect to dashboard (or home)
+        navigate("/personalinfo");
+      } else {
+        setServerErr(json?.message || "Invalid email or password.");
+      }
+    } catch (err) {
+      setServerErr("Network error. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <div
       className="min-h-screen flex items-center justify-center px-6 py-12 bg-cover bg-center"
       style={{
-        backgroundImage:
-          'url("/public/Image 1.jpg")',
+        backgroundImage: 'url("/Image 1.jpg")', // ✅ use correct path
         backgroundSize: "cover",
         backgroundPosition: "center",
         backgroundRepeat: "no-repeat",
@@ -51,6 +87,18 @@ export default function LoginPage() {
         <h2 className="text-3xl font-extrabold text-red-700 mb-6 text-center">
           Login
         </h2>
+
+        {/* ✅ Server messages */}
+        {serverMsg && (
+          <div className="mb-4 rounded-md border border-green-300 bg-green-50 px-4 py-3 text-green-800">
+            {serverMsg}
+          </div>
+        )}
+        {serverErr && (
+          <div className="mb-4 rounded-md border border-red-300 bg-red-50 px-4 py-3 text-red-800">
+            {serverErr}
+          </div>
+        )}
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -77,13 +125,13 @@ export default function LoginPage() {
                 </FormItem>
               )}
             />
+
             {/* Password */}
             <FormField
               control={form.control}
               name="password"
               render={({ field }) => (
                 <FormItem>
-                  {/* Flex container for label + link */}
                   <div className="flex items-center justify-between">
                     <FormLabel>Password</FormLabel>
                     <Link
@@ -93,7 +141,6 @@ export default function LoginPage() {
                       Forgot Password?
                     </Link>
                   </div>
-
                   <FormControl>
                     <Input
                       type="password"
@@ -111,12 +158,13 @@ export default function LoginPage() {
               )}
             />
 
-            {/* Submit Button (no changes) */}
+            {/* Submit Button */}
             <Button
               type="submit"
-              className="w-full bg-red-700 text-white font-bold py-3 rounded-md hover:bg-red-800"
+              disabled={loading}
+              className="w-full bg-red-700 text-white font-bold py-3 rounded-md hover:bg-red-800 disabled:opacity-60"
             >
-              Log In
+              {loading ? "Logging in..." : "Log In"}
             </Button>
           </form>
         </Form>

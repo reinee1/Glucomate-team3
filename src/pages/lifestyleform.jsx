@@ -35,10 +35,53 @@ export default function LifestyleHabitsPage() {
   });
 
   const onSubmit = async (data) => {
-    console.log("Lifestyle data:", data);
-    // Here you would typically send data to your API
-    navigate("/monitorform");
+    const token = localStorage.getItem("accessToken");
+    if (!token) {
+      alert("Please log in first.");
+      return navigate("/login");
+    }
+  
+    // Payload matches your save_lifestyle_habits() controller
+    const payload = {
+      smokingStatus: data.smokingStatus,
+      alcoholConsumption: data.alcoholConsumption,
+      exerciseFrequency: data.exerciseFrequency,
+    };
+  
+    try {
+      const res = await fetch("/api/v1/medical-profile/lifestylehabits", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`, // JWT for @jwt_required()
+        },
+        body: JSON.stringify(payload),
+      });
+  
+      // Safe JSON parse (prevents false “Network error” if body is empty/non-JSON)
+      const text = await res.text();
+      let json = null;
+      try { json = text ? JSON.parse(text) : null; } catch {}
+  
+      if (res.ok) {
+        // Backend returns 201 on success
+        return navigate("/monitorform");
+      }
+  
+      if (res.status === 401) {
+        alert(json?.message || "Session expired. Please log in again.");
+        return navigate("/login");
+      }
+      if (res.status === 422) {
+        return alert(json?.message || "Please complete all required fields.");
+      }
+  
+      alert(json?.message || `Save failed (${res.status}). Please try again.`);
+    } catch {
+      alert("Network error. Please try again.");
+    }
   };
+  
 
   const smokingOptions = [
     { value: "never", label: "Never Smoked" },
@@ -194,7 +237,7 @@ export default function LifestyleHabitsPage() {
               type="submit"
               className="w-full bg-red-700 text-white font-bold py-3 rounded-md hover:bg-red-800"
             >
-              Next
+             Complete Registration
             </Button>
           </form>
         </Form>

@@ -119,10 +119,93 @@ export default function MedicalHistoryPage() {
   const takingInsulin = watch("takingInsulin");
 
   const onSubmit = async (data) => {
-    console.log("Medical History:", data);
-    alert("Medical history saved successfully!");
-    navigate("/lifestyleform");
+    const token = localStorage.getItem("accessToken");
+    if (!token) {
+      alert("Please log in first.");
+      return navigate("/login");
+    }
+  
+    // Normalize conditions (replace “Other” with typed text, drop empties)
+    const rawConds = Array.isArray(data.medicalConditions) ? data.medicalConditions : [];
+    const medicalConditions = rawConds
+      .map((c) => (c === "Other" ? (data.otherCondition || "").trim() : c))
+      .filter(Boolean);
+  
+    // yes/no -> boolean
+    const familyHeartDisease = data.familyHeartDisease === "yes";
+    const takingInsulin = data.takingInsulin === "yes";
+  
+    // Medications mapping (drop empties)
+    const medications = (data.medications || [])
+      .map((m) => ({
+        medication_name: (m.name || "").trim(),
+        dosage: (m.dosage || "").trim(),
+        frequency: (m.frequency || "").trim(),
+      }))
+      .filter((m) => m.medication_name);
+  
+    // Allergies: trim + de-dupe + drop empties
+    const seen = new Set();
+    const allergies = (data.allergies || [])
+      .map((a) => (a || "").trim())
+      .filter((a) => a.length > 0)
+      .filter((a) => {
+        const k = a.toLowerCase();
+        if (seen.has(k)) return false;
+        seen.add(k);
+        return true;
+      });
+  
+    // Build backend payload
+    const payload = {
+      medicalConditions,              // required
+      familyHeartDisease,             // required (bool)
+      takingInsulin,                  // required (bool)
+      ...(familyHeartDisease ? { familyMember: (data.familyMember || "").trim() } : {}),
+      ...(takingInsulin
+        ? {
+            insulinType: (data.insulinType || "").trim(),
+            insulinDosage: (data.insulinDosage || "").trim(),
+            insulinSchedule: (data.insulinSchedule || "").trim(),
+          }
+        : {}),
+      medications,                    // [{ medication_name, dosage, frequency }]
+      allergies,                      // ["Peanuts", ...]
+    };
+  
+    try {
+      const res = await fetch("/api/v1/medical-profile/medicalhistory", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+      });
+  
+      // Safe parse (no false “network error”)
+      const text = await res.text();
+      let json = null;
+      try { json = text ? JSON.parse(text) : null; } catch {}
+  
+      if (res.ok) {
+        // backend returns 201
+        return navigate("/lifestyleform");
+      }
+  
+      if (res.status === 401) {
+        alert(json?.message || "Session expired. Please log in again.");
+        return navigate("/login");
+      }
+      if (res.status === 422) {
+        return alert(json?.message || "Please fill in all required fields.");
+      }
+      alert(json?.message || `Save failed (${res.status}).`);
+    } catch {
+      alert("Network error. Please try again.");
+    }
   };
+  
 
   // Handle adding new allergy input
   const addAllergyInput = () => {

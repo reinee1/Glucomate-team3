@@ -6,36 +6,29 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Eye, EyeOff } from "lucide-react";
 import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
+  Form, FormControl, FormField, FormItem, FormLabel, FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
 // Validation schema
-const signupSchema = z
-  .object({
-    firstName: z.string().min(1, "First name is required"),
-    lastName: z.string().min(1, "Last name is required"),
-    email: z.string().min(1, "Email is required").email("Enter a valid email"),
-    password: z
-      .string()
-      .min(1, "Password is required")
-      .min(8, "Password must be at least 8 characters"),
-    confirmPassword: z.string().min(1, "Confirm Password is required"),
-  })
-  .refine((data) => data.password === data.confirmPassword, {
-    message: "Passwords do not match",
-    path: ["confirmPassword"],
-  });
+const signupSchema = z.object({
+  firstName: z.string().min(1, "First name is required"),
+  lastName: z.string().min(1, "Last name is required"),
+  email: z.string().min(1, "Email is required").email("Enter a valid email"),
+  password: z.string().min(1, "Password is required").min(8, "Password must be at least 8 characters"),
+  confirmPassword: z.string().min(1, "Confirm Password is required"),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Passwords do not match",
+  path: ["confirmPassword"],
+});
 
 export default function SignUpForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [serverMsg, setServerMsg] = useState("");      // ✅ success message (e.g., “Verification email sent”)
+  const [serverErr, setServerErr] = useState("");      
 
   const form = useForm({
     resolver: zodResolver(signupSchema),
@@ -49,26 +42,60 @@ export default function SignUpForm() {
   });
 
   const onSubmit = async (data) => {
-    console.log("Signup data:", data);
+    setServerMsg("");
+    setServerErr("");
+    setLoading(true);
+  
+    const payload = {
+      first_name: data.firstName.trim(),
+      last_name: data.lastName.trim(),
+      email: data.email.trim().toLowerCase(),
+      password: data.password,
+    };
+  
     try {
-      const response = await fetch("/api/signup", {
+      // ✅ go through Vite proxy -> no CORS in dev
+      const response = await fetch("http://127.0.0.1:5000/api/v1/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
+        body: JSON.stringify(payload),
+        // Do NOT add credentials: 'include' unless you’re using cookies
       });
-      if (response.ok) console.log("Signup successful");
-      else console.error("Signup failed");
-    } catch (error) {
-      console.error("Error:", error);
+  
+      // Backend should return JSON; handle non-2xx too
+      const json = await response.json().catch(() => ({}));
+  
+      if (response.ok) {
+        if (response.status === 201) {
+          // ✅ brand-new registration
+          setServerMsg(json?.message || "Verification email sent. Please check your inbox.");
+          form.reset();
+        } else if (response.status === 200) {
+          // ✅ existing, unverified user -> email resent
+          setServerMsg(json?.message || "Verification email resent. Please check your inbox.");
+          // usually don't navigate; let them see the message
+          // if you *do* want to navigate: navigate("/login");
+        } else {
+          // Fallback success case
+          setServerMsg(json?.message || "Success.");
+        }}
+        else {
+        // Show specific message if provided (e.g., “Email already exists”, “All fields required”)
+        setServerErr(json?.message || `Signup failed (${response.status}). Please try again.`);
+      }
+    } catch {
+      setServerErr("Network error. Please check your connection and try again.");
+    } finally {
+      setLoading(false);
     }
   };
+  
 
   return (
     <div
       className="min-h-screen flex items-center justify-center px-6 py-12 bg-cover bg-center"
       style={{
-        backgroundImage:
-          'url("/public/Image 1.jpg")',
+        backgroundImage: 'url("/Image 1.jpg")', // ✅ use /Image 1.jpg for Next.js public assets
         backgroundSize: "cover",
         backgroundPosition: "center",
         backgroundRepeat: "no-repeat",
@@ -79,6 +106,18 @@ export default function SignUpForm() {
         <h2 className="text-3xl font-extrabold text-gray-900 mb-6 text-center">
           Sign Up
         </h2>
+
+        {/* ✅ Server Messages */}
+        {serverMsg && (
+          <div className="mb-4 rounded-md border border-green-300 bg-green-50 px-4 py-3 text-green-800">
+            {serverMsg}
+          </div>
+        )}
+        {serverErr && (
+          <div className="mb-4 rounded-md border border-red-300 bg-red-50 px-4 py-3 text-red-800">
+            {serverErr}
+          </div>
+        )}
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -159,14 +198,10 @@ export default function SignUpForm() {
                       />
                       <button
                         type="button"
-                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
                         onClick={() => setShowPassword(!showPassword)}
                       >
-                        {showPassword ? (
-                          <Eye className="h-5 w-5" />
-                        ) : (
-                          <EyeOff className="h-5 w-5" />
-                        )}
+                        {showPassword ? <Eye className="h-5 w-5" /> : <EyeOff className="h-5 w-5" />}
                       </button>
                     </div>
                   </FormControl>
@@ -192,14 +227,10 @@ export default function SignUpForm() {
                       />
                       <button
                         type="button"
-                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
                         onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                       >
-                        {showConfirmPassword ? (
-                          <Eye className="h-5 w-5" />
-                        ) : (
-                          <EyeOff className="h-5 w-5" />
-                        )}
+                        {showConfirmPassword ? <Eye className="h-5 w-5" /> : <EyeOff className="h-5 w-5" />}
                       </button>
                     </div>
                   </FormControl>
@@ -210,9 +241,10 @@ export default function SignUpForm() {
 
             <Button
               type="submit"
-              className="w-full bg-red-700 text-white font-bold py-3 rounded-md hover:bg-red-800"
+              disabled={loading}
+              className="w-full bg-red-700 text-white font-bold py-3 rounded-md hover:bg-red-800 disabled:opacity-60"
             >
-              Create Account
+              {loading ? "Creating..." : "Create Account"}
             </Button>
           </form>
         </Form>

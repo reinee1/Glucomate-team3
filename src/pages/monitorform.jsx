@@ -64,11 +64,61 @@ export default function MonitoringControlPage() {
   });
 
   const onSubmit = async (data) => {
-    console.log("Monitoring data:", data);
-    alert("All information saved successfully! Registration complete!");
-    navigate("/chatbot");
+    const token = localStorage.getItem("accessToken");
+    if (!token) {
+      alert("Please log in first.");
+      return navigate("/login");
+    }
+  
+    // Build payload exactly as backend expects
+    const payload = {
+      bloodSugarMonitoring: data.bloodSugarMonitoring,      // string
+      usesCGM: data.usesCGM,                                // "yes" | "no"
+      frequentHypoglycemia: data.frequentHypoglycemia,      // "yes" | "no"
+      // Only include conditionals when required
+      ...(data.usesCGM === "yes" ? { cgmFrequency: (data.cgmFrequency || "").trim() } : {}),
+      ...(data.frequentHypoglycemia === "yes"
+          ? { hypoglycemiaFrequency: (data.hypoglycemiaFrequency || "").trim() }
+          : {}),
+      // HbA1c optional; send as string/number if provided
+      ...(data.hba1cReading !== "" ? { hba1cReading: data.hba1cReading } : {}),
+    };
+  
+    try {
+      const res = await fetch("/api/v1/medical-profile/monitoringinfo", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`, // required for @jwt_required()
+        },
+        body: JSON.stringify(payload),
+      });
+  
+      // Safe JSON parse to avoid false “network error”
+      const text = await res.text();
+      let json = null;
+      try { json = text ? JSON.parse(text) : null; } catch {}
+  
+      if (res.ok) {
+        // backend returns 201 on success
+        alert(json?.message || "All information saved successfully! Registration complete!");
+        return navigate("/chatbot");
+      }
+  
+      if (res.status === 401) {
+        alert(json?.message || "Session expired. Please log in again.");
+        return navigate("/login");
+      }
+      if (res.status === 422) {
+        return alert(json?.message || "Please complete the required fields.");
+      }
+  
+      alert(json?.message || `Save failed (${res.status}). Please try again.`);
+    } catch {
+      alert("Network error. Please try again.");
+    }
   };
-
+  
   const monitoringOptions = [
     { value: "never", label: "Never" },
     { value: "once_daily", label: "Once a day" },
