@@ -10,7 +10,8 @@ import MonitoringControlPage from "./pages/monitorform";
 import LifestyleHabitsPage from "./pages/lifestyleform";
 import VoiceChatPage from './pages/VoiceChat';
 import VerifyEmail from "./pages/verifyemail";
-
+import ForgotPassword from "./pages/forgotpassword";
+import ResetPassword from "./pages/resetpassword";
 export default function App() {
   return (
     <BrowserRouter>
@@ -25,8 +26,9 @@ export default function App() {
         <Route path="/monitorform" element={<MonitoringControlPage />}></Route>
         <Route path="/lifestyleform" element={<LifestyleHabitsPage />}></Route>
         <Route path="/voicechatpage" element={<VoiceChatPage />} />
-        <Route path="/verify" element={<VerifyEmail />} />
-
+        <Route path="/verify-email" element={<VerifyEmail />} />
+        <Route path="/forgot-password" element={<ForgotPassword/>}/>
+        <Route path="/reset-password" element={<ResetPassword />} />
       </Routes>
     </BrowserRouter>
   );

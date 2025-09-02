@@ -54,15 +54,14 @@ export default function SignUpForm() {
     };
   
     try {
-      // ✅ go through Vite proxy -> no CORS in dev
+
       const response = await fetch("http://127.0.0.1:5000/api/v1/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
-        // Do NOT add credentials: 'include' unless you’re using cookies
       });
   
-      // Backend should return JSON; handle non-2xx too
+      
       const json = await response.json().catch(() => ({}));
   
       if (response.ok) {
