@@ -5,6 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useNavigate } from "react-router-dom";
+import { useUser } from "../contexts/UserContext";
 import {
   Form,
   FormControl,
@@ -19,54 +20,72 @@ import { Input } from "@/components/ui/input";
 
 // Validation schema
 const monitoringSchema = z.object({
-  bloodSugarMonitoring: z.string().min(1, "Please select your monitoring frequency"),
+  bloodSugarMonitoring: z.string().min(1, "Please select a monitoring frequency"),
   hba1cReading: z.union([
-    z.string().length(0), // Empty string (optional)
-    z.string()
-      .transform((val) => parseFloat(val))
-      .refine((val) => !isNaN(val) && val >= 4 && val <= 20, {
-        message: "HbA1c must be between 4% and 20%",
-      }),
+    z.string().min(1, "HbA1c reading is required"),
+    z.number().min(4, "HbA1c must be at least 4").max(20, "HbA1c cannot exceed 20"),
   ]),
-  usesCGM: z.string().min(1, "Please select CGM usage status"),
+  usesCGM: z.string().min(1, "Please select an option"),
   cgmFrequency: z.string().optional(),
-  frequentHypoglycemia: z.string().min(1, "Please select hypoglycemia frequency"),
+  frequentHypoglycemia: z.string().min(1, "Please select an option"),
   hypoglycemiaFrequency: z.string().optional(),
-}).superRefine((data, ctx) => {
-  if (data.usesCGM === "yes" && !data.cgmFrequency?.trim()) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: "Please specify CGM check frequency",
-      path: ["cgmFrequency"],
-    });
+}).refine((data) => {
+  if (data.usesCGM === "yes" && !data.cgmFrequency) {
+    return false;
   }
-  if (data.frequentHypoglycemia === "yes" && !data.hypoglycemiaFrequency?.trim()) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: "Please specify hypoglycemia frequency",
-      path: ["hypoglycemiaFrequency"],
-    });
+  return true;
+}, {
+  message: "CGM frequency is required when using CGM",
+  path: ["cgmFrequency"],
+}).refine((data) => {
+  if (data.frequentHypoglycemia === "yes" && !data.hypoglycemiaFrequency) {
+    return false;
   }
+  return true;
+}, {
+  message: "Hypoglycemia frequency is required when experiencing frequent hypoglycemia",
+  path: ["hypoglycemiaFrequency"],
 });
 
 export default function MonitoringControlPage() {
   const navigate = useNavigate();
+  const { user, updateUser } = useUser();
+
   const form = useForm({
     resolver: zodResolver(monitoringSchema),
     defaultValues: {
-      bloodSugarMonitoring: "",
-      hba1cReading: "",
-      usesCGM: "",
-      cgmFrequency: "",
-      frequentHypoglycemia: "",
-      hypoglycemiaFrequency: "",
+      bloodSugarMonitoring: user?.monitoring?.bloodSugarMonitoring || "",
+      hba1cReading: user?.monitoring?.hba1cReading || "",
+      usesCGM: user?.monitoring?.usesCGM || "",
+      cgmFrequency: user?.monitoring?.cgmFrequency || "",
+      frequentHypoglycemia: user?.monitoring?.frequentHypoglycemia || "",
+      hypoglycemiaFrequency: user?.monitoring?.hypoglycemiaFrequency || "",
     },
   });
 
+  const watchesUsesCGM = form.watch("usesCGM");
+  const watchesFrequentHypoglycemia = form.watch("frequentHypoglycemia");
+
   const onSubmit = async (data) => {
-    console.log("Monitoring data:", data);
-    alert("All information saved successfully! Registration complete!");
-    navigate("/chatbot");
+    try {
+      console.log("Monitoring data:", data);
+      
+      // Update user data with monitoring info
+      updateUser({
+        ...user,
+        monitoring: data,
+        completedForms: {
+          ...user.completedForms,
+          monitoring: true
+        }
+      });
+      
+      // Navigate directly to chatbot
+      navigate("/chatbot");
+    } catch (error) {
+      console.error("Error saving monitoring information:", error);
+      alert("Failed to save monitoring information. Please try again.");
+    }
   };
 
   const monitoringOptions = [
@@ -79,8 +98,7 @@ export default function MonitoringControlPage() {
     <div
       className="min-h-screen flex items-center justify-center px-6 py-12 bg-cover bg-center"
       style={{
-        backgroundImage:
-          'url("/public/Image 1.jpg")',
+        backgroundImage: 'url("Image 1.jpg")',
         backgroundSize: "cover",
         backgroundPosition: "center",
         backgroundRepeat: "no-repeat",
@@ -100,10 +118,7 @@ export default function MonitoringControlPage() {
               name="bloodSugarMonitoring"
               render={({ field }) => (
                 <FormItem className="space-y-3">
-                  <FormLabel className="text-base text-gray-900">
-                    How often do you monitor your blood sugar?{" "}
-                    <span className="text-red-600">*</span>
-                  </FormLabel>
+                  <FormLabel className="text-base">Blood Sugar Monitoring Frequency *</FormLabel>
                   <FormControl>
                     <RadioGroup
                       onValueChange={field.onChange}
@@ -116,19 +131,16 @@ export default function MonitoringControlPage() {
                           className="flex items-center space-x-3 space-y-0"
                         >
                           <FormControl>
-                            <RadioGroupItem 
-                              value={option.value} 
-                              className="text-gray-400 data-[state=checked]:text-gray-600 border-gray-300"
-                            />
+                            <RadioGroupItem value={option.value} />
                           </FormControl>
-                          <FormLabel className="font-normal text-gray-700">
+                          <FormLabel className="font-normal">
                             {option.label}
                           </FormLabel>
                         </FormItem>
                       ))}
                     </RadioGroup>
                   </FormControl>
-                  <FormMessage className="text-red-600" />
+                  <FormMessage />
                 </FormItem>
               )}
             />
@@ -139,9 +151,7 @@ export default function MonitoringControlPage() {
               name="hba1cReading"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-base text-gray-900">
-                    What is your latest HbA1c reading?
-                  </FormLabel>
+                  <FormLabel className="text-base">Latest HbA1c Reading *</FormLabel>
                   <FormControl>
                     <div className="relative">
                       <Input
@@ -150,147 +160,119 @@ export default function MonitoringControlPage() {
                         min="4"
                         max="20"
                         placeholder="e.g., 7.2"
-                        className="pr-12 border-gray-300 focus:ring-gray-400 focus:border-gray-400"
                         {...field}
+                        onChange={event => field.onChange(event.target.value)}
+                        className="pr-12"
                       />
-                      <span className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-500 font-medium">
+                      <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-medium">
                         %
                       </span>
                     </div>
                   </FormControl>
-                  <p className="text-sm text-gray-500 mt-2">
-                    Normal range is typically 4-6%. Enter your most recent test result.
-                  </p>
-                  <FormMessage className="text-red-600" />
+                  <FormMessage />
                 </FormItem>
               )}
             />
 
-            {/* Continuous Glucose Monitor */}
+            {/* Do you use a Continuous Glucose Monitor (CGM)? */}
             <FormField
               control={form.control}
               name="usesCGM"
               render={({ field }) => (
                 <FormItem className="space-y-3">
-                  <FormLabel className="text-base text-gray-900">
-                    Do you use a Continuous Glucose Monitor (CGM)?{" "}
-                    <span className="text-red-600">*</span>
-                  </FormLabel>
+                  <FormLabel className="text-base">Do you use a Continuous Glucose Monitor (CGM)? *</FormLabel>
                   <FormControl>
                     <RadioGroup
                       onValueChange={field.onChange}
                       defaultValue={field.value}
-                      className="flex gap-6"
+                      className="flex flex-col space-y-2"
                     >
-                      <FormItem className="flex items-center space-x-2 space-y-0">
+                      <FormItem className="flex items-center space-x-3 space-y-0">
                         <FormControl>
-                          <RadioGroupItem 
-                            value="yes" 
-                            className="text-gray-400 data-[state=checked]:text-gray-600 border-gray-300"
-                          />
+                          <RadioGroupItem value="yes" />
                         </FormControl>
-                        <FormLabel className="font-normal text-gray-700">Yes</FormLabel>
+                        <FormLabel className="font-normal">Yes</FormLabel>
                       </FormItem>
-                      <FormItem className="flex items-center space-x-2 space-y-0">
+                      <FormItem className="flex items-center space-x-3 space-y-0">
                         <FormControl>
-                          <RadioGroupItem 
-                            value="no" 
-                            className="text-gray-400 data-[state=checked]:text-gray-600 border-gray-300"
-                          />
+                          <RadioGroupItem value="no" />
                         </FormControl>
-                        <FormLabel className="font-normal text-gray-700">No</FormLabel>
+                        <FormLabel className="font-normal">No</FormLabel>
                       </FormItem>
                     </RadioGroup>
                   </FormControl>
-                  <FormMessage className="text-red-600" />
+                  <FormMessage />
                 </FormItem>
               )}
             />
 
-            {/* CGM Frequency (conditional) */}
-            {form.watch("usesCGM") === "yes" && (
+            {/* Conditionally show CGM Frequency */}
+            {watchesUsesCGM === "yes" && (
               <FormField
                 control={form.control}
                 name="cgmFrequency"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-base text-gray-900">
-                      How often do you check your CGM readings?{" "}
-                      <span className="text-red-600">*</span>
-                    </FormLabel>
+                    <FormLabel className="text-base">CGM Check Frequency *</FormLabel>
                     <FormControl>
                       <Input
                         placeholder="e.g., every 2 hours, constantly throughout the day..."
-                        className="border-gray-300 focus:ring-gray-400 focus:border-gray-400"
                         {...field}
                       />
                     </FormControl>
-                    <FormMessage className="text-red-600" />
+                    <FormMessage />
                   </FormItem>
                 )}
               />
             )}
 
-            {/* Frequent Hypoglycemia */}
+            {/* Do you experience frequent hypoglycemia? */}
             <FormField
               control={form.control}
               name="frequentHypoglycemia"
               render={({ field }) => (
                 <FormItem className="space-y-3">
-                  <FormLabel className="text-base text-gray-900">
-                    Do you experience frequent hypoglycemia (low blood sugar)?{" "}
-                    <span className="text-red-600">*</span>
-                  </FormLabel>
+                  <FormLabel className="text-base">Do you experience frequent hypoglycemia (low blood sugar)? *</FormLabel>
                   <FormControl>
                     <RadioGroup
                       onValueChange={field.onChange}
                       defaultValue={field.value}
-                      className="flex gap-6"
+                      className="flex flex-col space-y-2"
                     >
-                      <FormItem className="flex items-center space-x-2 space-y-0">
+                      <FormItem className="flex items-center space-x-3 space-y-0">
                         <FormControl>
-                          <RadioGroupItem 
-                            value="yes" 
-                            className="text-gray-400 data-[state=checked]:text-gray-600 border-gray-300"
-                          />
+                          <RadioGroupItem value="yes" />
                         </FormControl>
-                        <FormLabel className="font-normal text-gray-700">Yes</FormLabel>
+                        <FormLabel className="font-normal">Yes</FormLabel>
                       </FormItem>
-                      <FormItem className="flex items-center space-x-2 space-y-0">
+                      <FormItem className="flex items-center space-x-3 space-y-0">
                         <FormControl>
-                          <RadioGroupItem 
-                            value="no" 
-                            className="text-gray-400 data-[state=checked]:text-gray-600 border-gray-300"
-                          />
+                          <RadioGroupItem value="no" />
                         </FormControl>
-                        <FormLabel className="font-normal text-gray-700">No</FormLabel>
+                        <FormLabel className="font-normal">No</FormLabel>
                       </FormItem>
                     </RadioGroup>
                   </FormControl>
-                  <FormMessage className="text-red-600" />
+                  <FormMessage />
                 </FormItem>
               )}
             />
 
-            {/* Hypoglycemia Frequency (conditional) */}
-            {form.watch("frequentHypoglycemia") === "yes" && (
+            {/* Conditionally show Hypoglycemia Frequency */}
+            {watchesFrequentHypoglycemia === "yes" && (
               <FormField
                 control={form.control}
                 name="hypoglycemiaFrequency"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-base text-gray-900">
-                      How often do you experience hypoglycemia?{" "}
-                      <span className="text-red-600">*</span>
-                    </FormLabel>
+                    <FormLabel className="text-base">Hypoglycemia Frequency *</FormLabel>
                     <FormControl>
                       <Input
                         placeholder="e.g., 2-3 times per week, daily, monthly..."
-                        className="border-gray-300 focus:ring-gray-400 focus:border-gray-400"
                         {...field}
                       />
                     </FormControl>
-                    <FormMessage className="text-red-600" />
+                    <FormMessage />
                   </FormItem>
                 )}
               />
@@ -300,7 +282,7 @@ export default function MonitoringControlPage() {
               type="submit"
               className="w-full bg-red-700 text-white font-bold py-3 rounded-md hover:bg-red-800"
             >
-              Submit & Complete Registration
+              Update Monitoring Info
             </Button>
           </form>
         </Form>

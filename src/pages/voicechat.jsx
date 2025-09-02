@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { AudioWaveform } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useUser } from "../contexts/UserContext";
 
 const VoiceChatPage = () => {
   const [isUserTalking, setIsUserTalking] = useState(false);
@@ -11,10 +12,11 @@ const VoiceChatPage = () => {
   const animationRef = useRef(null);
   const navigate = useNavigate();
   const recognitionRef = useRef(null);
+  const { user } = useUser();
 
-  // Function to navigate back to chatbot page
-  const goBackToChatbot = () => {
-    navigate('/chatbot');
+  // Function to navigate back to home page
+  const goBackToHome = () => {
+    navigate('/');
   };
 
   // Initialize speech recognition
@@ -83,12 +85,21 @@ const VoiceChatPage = () => {
   // Start voice recognition
   const startListening = () => {
     if (recognitionRef.current) {
-      recognitionRef.current.start();
+      try {
+        recognitionRef.current.start();
+        // Show immediate feedback that we're listening
+        setInterimTranscript("Listening...");
+      } catch (error) {
+        console.error('Error starting speech recognition:', error);
+      }
     }
   };
 
   // Process user input and generate bot response
   const processUserInput = (userMessage) => {
+    // Don't process if it's just the "Listening..." message
+    if (userMessage === "Listening...") return;
+    
     // Add user message to conversation
     setConversation(prev => [
       ...prev,
@@ -168,13 +179,54 @@ const VoiceChatPage = () => {
     }
   }, [isUserTalking]);
 
+  const getUserInitials = () => {
+    if (!user) return 'U';
+    if (user.firstName && user.lastName) {
+      return `${user.firstName[0]}${user.lastName[0]}`.toUpperCase();
+    }
+    if (user.email) {
+      return user.email[0].toUpperCase();
+    }
+    return 'U';
+  };
+
   return (
-    <div className="min-h-screen bg-white text-gray-800 flex flex-col items-center justify-center px-4 py-12 font-sans">
-      <div className="relative max-w-2xl w-full bg-white rounded-2xl shadow-xl border border-gray-100 z-10 flex flex-col h-[600px] md:h-[700px] overflow-hidden">
+    <div className="min-h-screen bg-white text-gray-800 flex flex-col px-4 py-12 font-sans">
+      {/* Header with back button and user icon */}
+      <div className="w-full max-w-2xl mx-auto mb-6 flex justify-between items-center">
+        <button
+          onClick={goBackToHome}
+          className="p-2 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors duration-300"
+        >
+          <svg 
+            xmlns="http://www.w3.org/2000/svg" 
+            className="h-6 w-6" 
+            fill="none" 
+            viewBox="0 0 24 24" 
+            stroke="currentColor"
+          >
+            <path 
+              strokeLinecap="round" 
+              strokeLinejoin="round" 
+              strokeWidth={2} 
+              d="M10 19l-7-7m0 0l7-7m-7 7h18" 
+            />
+          </svg>
+        </button>
+        
+        {/* User icon with initials */}
+        <div className="flex items-center">
+          <div className="w-10 h-10 bg-red-700 text-white rounded-full flex items-center justify-center font-semibold">
+            {getUserInitials()}
+          </div>
+        </div>
+      </div>
+
+      <div className="relative max-w-2xl w-full mx-auto bg-white rounded-2xl shadow-xl border border-gray-100 z-10 flex flex-col h-[600px] md:h-[700px] overflow-hidden">
         {/* Header with back button */}
         <div className="p-6 bg-red-800 text-white flex items-center justify-between rounded-t-2xl shadow-sm">
           <button
-            onClick={goBackToChatbot}
+            onClick={goBackToHome}
             className="p-2 rounded-full hover:bg-red-900 transition-colors duration-300"
           >
             <svg 
@@ -244,7 +296,7 @@ const VoiceChatPage = () => {
           {/* User talking indicator */}
           {isUserTalking && (
             <div className="mb-6 flex flex-col items-center">
-              <div className="text-red-800 font-semibold mb-2">Listening...</div>
+              <div className="text-red-800 font-semibold mb-2">Speak now...</div>
               <div 
                 ref={animationRef}
                 className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center transition-all duration-300"
@@ -293,6 +345,11 @@ const VoiceChatPage = () => {
               />
             </svg>
           </button>
+          
+          {/* Instructions */}
+          <p className="mt-4 text-sm text-gray-500 text-center">
+            Press the microphone and speak. Your words will be transcribed automatically.
+          </p>
         </div>
       </div>
     </div>

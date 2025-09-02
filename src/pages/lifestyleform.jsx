@@ -5,6 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useNavigate } from "react-router-dom";
+import { useUser } from "../contexts/UserContext";
 import {
   Form,
   FormControl,
@@ -25,19 +26,36 @@ const lifestyleSchema = z.object({
 
 export default function LifestyleHabitsPage() {
   const navigate = useNavigate();
+  const { user, updateUser } = useUser();
+
   const form = useForm({
     resolver: zodResolver(lifestyleSchema),
     defaultValues: {
-      smokingStatus: "",
-      alcoholConsumption: "",
-      exerciseFrequency: "",
+      smokingStatus: user?.lifestyle?.smokingStatus || "",
+      alcoholConsumption: user?.lifestyle?.alcoholConsumption || "",
+      exerciseFrequency: user?.lifestyle?.exerciseFrequency || "",
     },
   });
 
   const onSubmit = async (data) => {
-    console.log("Lifestyle data:", data);
-    // Here you would typically send data to your API
-    navigate("/monitorform");
+    try {
+      console.log("Lifestyle data:", data);
+      
+      // Update user data with lifestyle info
+      updateUser({
+        ...user,
+        lifestyle: data,
+        completedForms: {
+          ...user.completedForms,
+          lifestyle: true
+        }
+      });
+      
+      navigate("/monitorform");
+    } catch (error) {
+      console.error("Error saving lifestyle information:", error);
+      alert("Failed to save lifestyle information. Please try again.");
+    }
   };
 
   const smokingOptions = [
@@ -64,7 +82,7 @@ export default function LifestyleHabitsPage() {
       className="min-h-screen flex items-center justify-center px-6 py-12 bg-cover bg-center"
       style={{
         backgroundImage:
-          'url("/public/Image 1.jpg")',
+          'url("Image 1.jpg")',
         backgroundSize: "cover",
         backgroundPosition: "center",
         backgroundRepeat: "no-repeat",
@@ -84,7 +102,7 @@ export default function LifestyleHabitsPage() {
               name="smokingStatus"
               render={({ field }) => (
                 <FormItem className="space-y-3">
-                  <FormLabel className="text-base text-black">Smoking Status *</FormLabel>
+                  <FormLabel className="text-base">Smoking Status *</FormLabel>
                   <FormControl>
                     <RadioGroup
                       onValueChange={field.onChange}
@@ -97,19 +115,16 @@ export default function LifestyleHabitsPage() {
                           className="flex items-center space-x-3 space-y-0"
                         >
                           <FormControl>
-                            <RadioGroupItem 
-                              value={option.value} 
-                              className="text-black border-gray-400"
-                            />
+                            <RadioGroupItem value={option.value} />
                           </FormControl>
-                          <FormLabel className="font-normal text-black">
+                          <FormLabel className="font-normal">
                             {option.label}
                           </FormLabel>
                         </FormItem>
                       ))}
                     </RadioGroup>
                   </FormControl>
-                  <FormMessage className="text-red-600" />
+                  <FormMessage />
                 </FormItem>
               )}
             />
@@ -120,7 +135,7 @@ export default function LifestyleHabitsPage() {
               name="alcoholConsumption"
               render={({ field }) => (
                 <FormItem className="space-y-3">
-                  <FormLabel className="text-base text-black">
+                  <FormLabel className="text-base">
                     Alcohol Consumption *
                   </FormLabel>
                   <FormControl>
@@ -135,19 +150,16 @@ export default function LifestyleHabitsPage() {
                           className="flex items-center space-x-3 space-y-0"
                         >
                           <FormControl>
-                            <RadioGroupItem 
-                              value={option.value} 
-                              className="text-black border-gray-400"
-                            />
+                            <RadioGroupItem value={option.value} />
                           </FormControl>
-                          <FormLabel className="font-normal text-black">
+                          <FormLabel className="font-normal">
                             {option.label}
                           </FormLabel>
                         </FormItem>
                       ))}
                     </RadioGroup>
                   </FormControl>
-                  <FormMessage className="text-red-600" />
+                  <FormMessage />
                 </FormItem>
               )}
             />
@@ -158,7 +170,7 @@ export default function LifestyleHabitsPage() {
               name="exerciseFrequency"
               render={({ field }) => (
                 <FormItem className="space-y-3">
-                  <FormLabel className="text-base text-black">
+                  <FormLabel className="text-base">
                     Exercise Frequency *
                   </FormLabel>
                   <FormControl>
@@ -173,19 +185,16 @@ export default function LifestyleHabitsPage() {
                           className="flex items-center space-x-3 space-y-0"
                         >
                           <FormControl>
-                            <RadioGroupItem 
-                              value={option.value} 
-                              className="text-black border-gray-400"
-                            />
+                            <RadioGroupItem value={option.value} />
                           </FormControl>
-                          <FormLabel className="font-normal text-black">
+                          <FormLabel className="font-normal">
                             {option.label}
                           </FormLabel>
                         </FormItem>
                       ))}
                     </RadioGroup>
                   </FormControl>
-                  <FormMessage className="text-red-600" />
+                  <FormMessage />
                 </FormItem>
               )}
             />

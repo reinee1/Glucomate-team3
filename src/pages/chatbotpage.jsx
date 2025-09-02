@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
-import Header from "../components/header";
 import { AudioLines } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useUser } from "../contexts/UserContext";
+import { User, LogOut } from "lucide-react"; // Import icons
 
 // Modal component with a soft design
 const Modal = ({ message, onClose }) => {
@@ -35,9 +36,13 @@ const ChatbotPage = () => {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isListening, setIsListening] = useState(false);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const messagesEndRef = useRef(null);
   const recognitionRef = useRef(null);
+  const dropdownRef = useRef(null);
   const navigate = useNavigate();
+  const { user, logout } = useUser();
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -77,6 +82,19 @@ const ChatbotPage = () => {
       if (recognitionRef.current) {
         recognitionRef.current.stop();
       }
+    };
+  }, []);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setShowDropdown(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
 
@@ -176,9 +194,85 @@ const ChatbotPage = () => {
     }
   };
 
+  const getUserInitials = () => {
+    if (!user) return 'U';
+    if (user.firstName && user.lastName) {
+      return `${user.firstName[0]}${user.lastName[0]}`.toUpperCase();
+    }
+    if (user.email) {
+      return user.email[0].toUpperCase();
+    }
+    return 'U';
+  };
+
+  const handleLogout = () => {
+    logout();
+    setShowLogoutConfirm(false);
+    setShowDropdown(false);
+    navigate("/");
+  };
+
   return (
-    <div className="min-h-screen bg-white text-gray-800 flex flex-col items-center justify-center px-4 py-12 font-sans">
-      <div className="relative max-w-2xl w-full bg-white rounded-2xl shadow-xl border border-gray-100 z-10 flex flex-col h-[600px] md:h-[700px] overflow-hidden">
+    <div className="min-h-screen bg-white text-gray-800 flex flex-col px-4 py-12 font-sans">
+      {/* Header with back button and user icon with dropdown */}
+      <div className="w-full max-w-2xl mx-auto mb-6 flex justify-between items-center">
+        <button
+          onClick={() => navigate('/')}
+          className="p-2 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors duration-300"
+        >
+          <svg 
+            xmlns="http://www.w3.org/2000/svg" 
+            className="h-6 w-6" 
+            fill="none" 
+            viewBox="0 0 24 24" 
+            stroke="currentColor"
+          >
+            <path 
+              strokeLinecap="round" 
+              strokeLinejoin="round" 
+              strokeWidth={2} 
+              d="M10 19l-7-7m0 0l7-7m-7 7h18" 
+            />
+          </svg>
+        </button>
+        
+        {/* User icon with dropdown */}
+        <div className="relative" ref={dropdownRef}>
+          <button
+            onClick={() => setShowDropdown(!showDropdown)}
+            className="w-10 h-10 bg-red-700 text-white rounded-full flex items-center justify-center font-semibold hover:bg-red-800 transition-colors duration-300"
+          >
+            {getUserInitials()}
+          </button>
+          
+          {showDropdown && (
+            <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
+              <button
+                onClick={() => {
+                  setShowDropdown(false);
+                  navigate('/accountpage');
+                }}
+                className="block w-full text-left px-4 py-3 flex items-center text-gray-800 hover:bg-gray-100 transition-colors"
+              >
+                <User size={18} className="mr-2" />
+                View Profile
+              </button>
+              <button
+                className="w-full text-left px-4 py-3 flex items-center text-red-600 hover:bg-gray-100 transition-colors"
+                onClick={() => {
+                  setShowLogoutConfirm(true);
+                  setShowDropdown(false);
+                }}
+              >
+                <LogOut size={18} className="mr-2" />
+                Logout
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="relative max-w-2xl w-full mx-auto bg-white rounded-2xl shadow-xl border border-gray-100 z-10 flex flex-col h-[600px] md:h-[700px] overflow-hidden">
         {/* Chatbot Header */}
         <div className="p-6 bg-red-800 text-white flex items-center justify-center rounded-t-2xl shadow-sm">
           <svg
@@ -282,6 +376,30 @@ const ChatbotPage = () => {
           </div>
         </form>
       </div>
+
+      {/* Logout Confirmation Modal */}
+      {showLogoutConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg shadow-lg max-w-sm w-full mx-4">
+            <h3 className="text-xl font-bold text-red-700 mb-4">Confirm Logout</h3>
+            <p className="mb-6">Are you sure you want to logout?</p>
+            <div className="flex gap-4">
+              <button
+                onClick={() => setShowLogoutConfirm(false)}
+                className="flex-1 border border-gray-300 text-gray-700 py-2 rounded-md hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleLogout}
+                className="flex-1 bg-red-700 text-white font-bold py-2 rounded-md hover:bg-red-800"
+              >
+                Logout
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

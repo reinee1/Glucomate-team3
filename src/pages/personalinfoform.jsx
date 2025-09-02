@@ -5,6 +5,7 @@ import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate } from "react-router-dom";
+import { useUser } from "../contexts/UserContext";
 import { ChevronDownIcon } from "lucide-react";
 import {
   Form,
@@ -26,28 +27,29 @@ const personalInfoSchema = z.object({
     required_error: "Please select your date of birth",
   }),
   gender: z.string().min(1, "Gender is required"),
-  height: z.string().min(1, "Height is required"),
+  height: z.coerce.number().min(1, "Height is required"),
   heightUnit: z.enum(["cm", "ft/in"]),
-  weight: z.string().min(1, "Weight is required"),
+  weight: z.coerce.number().min(1, "Weight is required"),
   weightUnit: z.enum(["kg", "lb"]),
   diabetesType: z.string().min(1, "Diabetes type is required"),
-  diagnosisYear: z.string().min(1, "Diagnosis year is required"),
+  diagnosisYear: z.coerce.number().min(1970).max(new Date().getFullYear()),
 });
 
 export default function PersonalInfoPage() {
   const navigate = useNavigate();
+  const { user, updateUser } = useUser();
 
   const form = useForm({
     resolver: zodResolver(personalInfoSchema),
     defaultValues: {
-      birthDate: undefined,
-      gender: "",
-      height: "170",
-      heightUnit: "cm",
-      weight: "70",
-      weightUnit: "kg",
-      diabetesType: "",
-      diagnosisYear: "2020",
+      birthDate: user?.personalInfo?.birthDate || undefined,
+      gender: user?.personalInfo?.gender || "",
+      height: user?.personalInfo?.height || 170,
+      heightUnit: user?.personalInfo?.heightUnit || "cm",
+      weight: user?.personalInfo?.weight || 70,
+      weightUnit: user?.personalInfo?.weightUnit || "kg",
+      diabetesType: user?.personalInfo?.diabetesType || "",
+      diagnosisYear: user?.personalInfo?.diagnosisYear || 2020,
     },
   });
 
@@ -56,32 +58,52 @@ export default function PersonalInfoPage() {
   const weightUnit = watch("weightUnit");
 
   React.useEffect(() => {
-    setValue("height", heightUnit === "cm" ? "170" : "60");
-  }, [heightUnit, setValue]);
+    if (!user?.personalInfo?.height) {
+      setValue("height", heightUnit === "cm" ? 170 : 60);
+    }
+  }, [heightUnit, setValue, user]);
 
   React.useEffect(() => {
-    setValue("weight", weightUnit === "kg" ? "70" : "154");
-  }, [weightUnit, setValue]);
+    if (!user?.personalInfo?.weight) {
+      setValue("weight", weightUnit === "kg" ? 70 : 154);
+    }
+  }, [weightUnit, setValue, user]);
 
   const onSubmit = async (data) => {
-    console.log("Personal Info:", data);
-    alert("Personal information saved successfully!");
-    navigate("/medicalinfo");
+    try {
+      console.log("Personal Info:", data);
+      
+      // Update user data with personal info
+      updateUser({
+        ...user,
+        personalInfo: data,
+        completedForms: {
+          ...user.completedForms,
+          personalInfo: true
+        }
+      });
+      
+      alert("Personal information saved successfully!");
+      navigate("/medicalinfo");
+    } catch (error) {
+      console.error("Error saving personal information:", error);
+      alert("Failed to save personal information. Please try again.");
+    }
   };
 
   return (
     <div
-      className="min-h-screen flex items-center justify-center px-6 py-12 bg-cover bg-center"
+      className="min-h-screen flex items-center justify-center px-4 py-8 bg-cover bg-center"
       style={{
-        backgroundImage: 'url("/public/Image 1.jpg")',
+        backgroundImage:
+          'url("Image 1.jpg")',
         backgroundSize: "cover",
         backgroundPosition: "center",
         backgroundRepeat: "no-repeat",
-        filter: "brightness(1)",
       }}
     >
-      <div className="w-full max-w-md bg-white rounded-lg p-8 shadow-lg border border-red-700">
-        <h2 className="text-3xl font-extrabold text-red-700 mb-6 text-center">
+      <div className="w-full max-w-md bg-white rounded-lg p-6 shadow-lg border border-red-700 mx-4">
+        <h2 className="text-2xl font-bold text-red-700 mb-6 text-center">
           Personal Information
         </h2>
 
@@ -102,11 +124,11 @@ export default function PersonalInfoPage() {
                         variant="outline"
                         className={cn(
                           "w-full justify-between font-normal",
-                          !field.value && "text-gray-400"
+                          !field.value && "text-muted-foreground"
                         )}
                       >
                         {field.value ? field.value.toLocaleDateString() : "Select date"}
-                        <ChevronDownIcon className="h-4 w-4" />
+                        <ChevronDownIcon className="h-4 w-4 opacity-50" />
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0" align="start">
@@ -120,6 +142,7 @@ export default function PersonalInfoPage() {
                         captionLayout="dropdown"
                         fromYear={1900}
                         toYear={new Date().getFullYear()}
+                        initialFocus
                       />
                     </PopoverContent>
                   </Popover>
@@ -168,14 +191,16 @@ export default function PersonalInfoPage() {
                       <FormControl>
                         <Input
                           type="range"
-                          min={heightUnit === "cm" ? "100" : "36"}
-                          max={heightUnit === "cm" ? "250" : "96"}
-                          {...field}
+                          min={heightUnit === "cm" ? 100 : 36}
+                          max={heightUnit === "cm" ? 250 : 96}
+                          value={field.value}
+                          onChange={field.onChange}
                           className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                          aria-label="Height"
                         />
                       </FormControl>
                       <div className="text-center mt-2 font-semibold text-gray-700">
-                        {watch("height")} {heightUnit}
+                        {field.value} {heightUnit}
                       </div>
                     </FormItem>
                   )}
@@ -185,6 +210,7 @@ export default function PersonalInfoPage() {
                     type="button"
                     variant={heightUnit === "cm" ? "default" : "outline"}
                     onClick={() => setValue("heightUnit", "cm")}
+                    aria-label="Use centimeters"
                   >
                     cm
                   </Button>
@@ -192,6 +218,7 @@ export default function PersonalInfoPage() {
                     type="button"
                     variant={heightUnit === "ft/in" ? "default" : "outline"}
                     onClick={() => setValue("heightUnit", "ft/in")}
+                    aria-label="Use feet and inches"
                   >
                     ft/in
                   </Button>
@@ -213,14 +240,16 @@ export default function PersonalInfoPage() {
                       <FormControl>
                         <Input
                           type="range"
-                          min={weightUnit === "kg" ? "30" : "66"}
-                          max={weightUnit === "kg" ? "200" : "440"}
-                          {...field}
+                          min={weightUnit === "kg" ? 30 : 66}
+                          max={weightUnit === "kg" ? 200 : 440}
+                          value={field.value}
+                          onChange={field.onChange}
                           className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                          aria-label="Weight"
                         />
                       </FormControl>
                       <div className="text-center mt-2 font-semibold text-gray-700">
-                        {watch("weight")} {weightUnit}
+                        {field.value} {weightUnit}
                       </div>
                     </FormItem>
                   )}
@@ -230,6 +259,7 @@ export default function PersonalInfoPage() {
                     type="button"
                     variant={weightUnit === "kg" ? "default" : "outline"}
                     onClick={() => setValue("weightUnit", "kg")}
+                    aria-label="Use kilograms"
                   >
                     kg
                   </Button>
@@ -237,6 +267,7 @@ export default function PersonalInfoPage() {
                     type="button"
                     variant={weightUnit === "lb" ? "default" : "outline"}
                     onClick={() => setValue("weightUnit", "lb")}
+                    aria-label="Use pounds"
                   >
                     lb
                   </Button>
@@ -271,32 +302,35 @@ export default function PersonalInfoPage() {
               )}
             />
 
+            
             {/* Diagnosis Year */}
-            <div>
-              <FormLabel className="text-base text-gray-900">
-                Year of Diagnosis <span className="text-red-600">*</span>
-              </FormLabel>
-              <FormField
-                control={form.control}
-                name="diagnosisYear"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormControl>
-                      <Input
-                        type="range"
-                        min="1970"
-                        max="2025"
-                        {...field}
-                        className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer mt-2"
-                      />
-                    </FormControl>
-                    <div className="text-center mt-2 font-semibold text-gray-700">
-                      {watch("diagnosisYear")}
-                    </div>
-                  </FormItem>
-                )}
-              />
-            </div>
+            <FormField
+              control={form.control}
+              name="diagnosisYear"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-base text-gray-900">
+                    Year of Diagnosis <span className="text-red-600">*</span>
+                  </FormLabel>
+                  <FormControl>
+                    <Input
+                      type="range"
+                      min={1970}
+                      max={new Date().getFullYear()}
+                      value={field.value}
+                      onChange={field.onChange}
+                      className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                      aria-label="Year of diagnosis"
+                    />
+                  </FormControl>
+                  <div className="text-center mt-2 font-semibold text-gray-700">
+                    {field.value}
+                  </div>
+                  <FormMessage className="text-red-600" />
+                </FormItem>
+              )}
+            />
+
 
             <Button
               type="submit"

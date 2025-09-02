@@ -5,6 +5,8 @@ import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Eye, EyeOff } from "lucide-react";
+import { useNavigate } from 'react-router-dom';
+import { useUser } from '../contexts/UserContext';
 import {
   Form,
   FormControl,
@@ -15,6 +17,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Link } from "react-router-dom";
 
 // Validation schema
 const signupSchema = z
@@ -36,6 +39,8 @@ const signupSchema = z
 export default function SignUpForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const navigate = useNavigate();
+  const { login } = useUser();
 
   const form = useForm({
     resolver: zodResolver(signupSchema),
@@ -49,17 +54,32 @@ export default function SignUpForm() {
   });
 
   const onSubmit = async (data) => {
-    console.log("Signup data:", data);
     try {
-      const response = await fetch("/api/signup", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-      if (response.ok) console.log("Signup successful");
-      else console.error("Signup failed");
+      // Create user object
+      const userData = {
+        firstName: data.firstName,
+        lastName: data.lastName,
+        email: data.email,
+        completedForms: {
+          personalInfo: false,
+          medicalHistory: false,
+          lifestyle: false,
+          monitoring: false
+        },
+        personalInfo: {},
+        medicalHistory: {},
+        lifestyle: {},
+        monitoring: {}
+      };
+      
+      // Save user to context and localStorage
+      login(userData);
+      
+      // Redirect to personal info form
+      navigate("/personalinfo");
     } catch (error) {
       console.error("Error:", error);
+      alert("Signup failed. Please try again.");
     }
   };
 
@@ -67,16 +87,15 @@ export default function SignUpForm() {
     <div
       className="min-h-screen flex items-center justify-center px-6 py-12 bg-cover bg-center"
       style={{
-        backgroundImage:
-          'url("/public/Image 1.jpg")',
+        backgroundImage: 'url("Image 1.jpg")',
         backgroundSize: "cover",
         backgroundPosition: "center",
         backgroundRepeat: "no-repeat",
-        filter: "brightness(1)",
+        
       }}
     >
-      <div className="w-full max-w-md bg-white rounded-lg p-8 shadow-lg border border-gray-300">
-        <h2 className="text-3xl font-extrabold text-gray-900 mb-6 text-center">
+      <div className="w-full max-w-md bg-white rounded-lg p-8 shadow-lg border border-red-700">
+        <h2 className="text-3xl font-extrabold text-red-700 mb-6 text-center">
           Sign Up
         </h2>
 
@@ -94,7 +113,7 @@ export default function SignUpForm() {
                       <Input
                         placeholder="First Name"
                         {...field}
-                        className="border-gray-300 focus:ring-gray-500 focus:border-gray-500"
+                        className="border-gray-300 focus:ring-red-500 focus:border-red-500"
                       />
                     </FormControl>
                     <FormMessage className="text-red-600 text-sm" />
@@ -113,7 +132,7 @@ export default function SignUpForm() {
                       <Input
                         placeholder="Last Name"
                         {...field}
-                        className="border-gray-300 focus:ring-gray-500 focus:border-gray-500"
+                        className="border-gray-300 focus:ring-red-500 focus:border-red-500"
                       />
                     </FormControl>
                     <FormMessage className="text-red-600 text-sm" />
@@ -134,7 +153,7 @@ export default function SignUpForm() {
                       type="email"
                       placeholder="you@example.com"
                       {...field}
-                      className="border-gray-300 focus:ring-gray-500 focus:border-gray-500"
+                      className="border-gray-300 focus:ring-red-500 focus:border-red-500"
                     />
                   </FormControl>
                   <FormMessage className="text-red-600 text-sm" />
@@ -155,7 +174,7 @@ export default function SignUpForm() {
                         type={showPassword ? "text" : "password"}
                         placeholder="Create a password"
                         {...field}
-                        className="border-gray-300 focus:ring-gray-500 focus:border-gray-500 pr-10"
+                        className="border-gray-300 focus:ring-red-500 focus:border-red-500 pr-10"
                       />
                       <button
                         type="button"
@@ -163,9 +182,9 @@ export default function SignUpForm() {
                         onClick={() => setShowPassword(!showPassword)}
                       >
                         {showPassword ? (
-                          <Eye className="h-5 w-5" />
-                        ) : (
                           <EyeOff className="h-5 w-5" />
+                        ) : (
+                          <Eye className="h-5 w-5" />
                         )}
                       </button>
                     </div>
@@ -188,7 +207,7 @@ export default function SignUpForm() {
                         type={showConfirmPassword ? "text" : "password"}
                         placeholder="Confirm password"
                         {...field}
-                        className="border-gray-300 focus:ring-gray-500 focus:border-gray-500 pr-10"
+                        className="border-gray-300 focus:ring-red-500 focus:border-red-500 pr-10"
                       />
                       <button
                         type="button"
@@ -196,9 +215,9 @@ export default function SignUpForm() {
                         onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                       >
                         {showConfirmPassword ? (
-                          <Eye className="h-5 w-5" />
-                        ) : (
                           <EyeOff className="h-5 w-5" />
+                        ) : (
+                          <Eye className="h-5 w-5" />
                         )}
                       </button>
                     </div>
@@ -216,6 +235,13 @@ export default function SignUpForm() {
             </Button>
           </form>
         </Form>
+
+        <p className="mt-6 text-center text-gray-700">
+          Already have an account?{" "}
+          <Link to="/login" className="text-red-700 hover:text-red-900 font-semibold">
+            Sign In
+          </Link>
+        </p>
       </div>
     </div>
   );

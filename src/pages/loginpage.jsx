@@ -4,6 +4,8 @@ import React from "react";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useNavigate } from 'react-router-dom';
+import { useUser } from '../contexts/UserContext';
 import {
   Form,
   FormControl,
@@ -23,6 +25,9 @@ const loginSchema = z.object({
 });
 
 export default function LoginPage() {
+  const navigate = useNavigate();
+  const { login } = useUser();
+
   const form = useForm({
     resolver: zodResolver(loginSchema),
     defaultValues: {
@@ -32,16 +37,66 @@ export default function LoginPage() {
   });
 
   const onSubmit = (values) => {
-    console.log("Logging in with", values);
-    // Your API call here
+    try {
+      console.log("Logging in with", values);
+      
+      // In a real app, you would verify credentials with your backend
+      // For demo purposes, we'll create a mock user object
+      const userData = {
+        firstName: 'John',
+        lastName: 'Doe',
+        email: values.email,
+        completedForms: {
+          personalInfo: true,
+          medicalHistory: true,
+          lifestyle: true,
+          monitoring: true
+        },
+        personalInfo: {
+          birthDate: new Date('1990-01-01'),
+          gender: 'male',
+          height: 170,
+          heightUnit: 'cm',
+          weight: 70,
+          weightUnit: 'kg',
+          diabetesType: 'type2',
+          diagnosisYear: 2020
+        },
+        medicalHistory: {
+          medicalConditions: ["High Blood Pressure"],
+          familyHeartDisease: "no",
+          takingInsulin: "no",
+          allergies: ["None"]
+        },
+        lifestyle: {
+          smokingStatus: "never",
+          alcoholConsumption: "occasionally",
+          exerciseFrequency: "moderate"
+        },
+        monitoring: {
+          bloodSugarMonitoring: "multiple_daily",
+          hba1cReading: "6.5",
+          usesCGM: "no",
+          frequentHypoglycemia: "no"
+        }
+      };
+      
+      // Save user to context and localStorage
+      login(userData);
+      
+      // Redirect to home page
+      navigate("/");
+    } catch (error) {
+      console.error("Login failed:", error);
+      alert("Login failed. Please try again.");
+    }
   };
 
   return (
     <div
       className="min-h-screen flex items-center justify-center px-6 py-12 bg-cover bg-center"
       style={{
-        backgroundImage:
-          'url("/public/Image 1.jpg")',
+        backgroundImage: 'url("Image 1.jpg")',
         backgroundSize: "cover",
         backgroundPosition: "center",
         backgroundRepeat: "no-repeat",
@@ -69,7 +124,7 @@ export default function LoginPage() {
                       className={
                         form.formState.errors.email
                           ? "border-red-600 focus:ring-red-600"
-                          : ""
+                          : "border-gray-300 focus:ring-red-500 focus:border-red-500"
                       }
                     />
                   </FormControl>
@@ -77,6 +132,7 @@ export default function LoginPage() {
                 </FormItem>
               )}
             />
+            
             {/* Password */}
             <FormField
               control={form.control}
@@ -102,7 +158,7 @@ export default function LoginPage() {
                       className={
                         form.formState.errors.password
                           ? "border-red-600 focus:ring-red-600"
-                          : ""
+                          : "border-gray-300 focus:ring-red-500 focus:border-red-500"
                       }
                     />
                   </FormControl>
@@ -111,7 +167,7 @@ export default function LoginPage() {
               )}
             />
 
-            {/* Submit Button (no changes) */}
+            {/* Submit Button */}
             <Button
               type="submit"
               className="w-full bg-red-700 text-white font-bold py-3 rounded-md hover:bg-red-800"
@@ -120,6 +176,13 @@ export default function LoginPage() {
             </Button>
           </form>
         </Form>
+
+        <p className="mt-6 text-center text-gray-700">
+          Don't have an account?{" "}
+          <Link to="/signuppage" className="text-red-700 hover:text-red-900 font-semibold">
+            Sign Up
+          </Link>
+        </p>
       </div>
     </div>
   );
