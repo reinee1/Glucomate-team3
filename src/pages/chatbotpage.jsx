@@ -1,10 +1,74 @@
+// src/pages/ChatbotPage.jsx
 import React, { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 import Header from "../components/header";
-import { AudioLines } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { AudioLines } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
-// Modal component with a soft design
+// ==============================
+// Inlined API (no separate .js)
+// ==============================
+const API_BASE = import.meta.env.VITE_API_URL || "http://127.0.0.1:5000";
+const CHAT_BASE = `${API_BASE}/api/v1/chat`;
+
+function authHeaders() {
+  const token = localStorage.getItem("accessToken") || "";
+  return {
+    Authorization: `Bearer ${token}`,
+    "Content-Type": "application/json",
+  };
+}
+
+async function apiGetStatus() {
+  const resp = await fetch(`${CHAT_BASE}/status`, { headers: authHeaders() });
+  if (!resp.ok) throw new Error("Failed to get status");
+  return resp.json();
+}
+
+async function apiSendMessage(message, sessionId) {
+  const resp = await fetch(`${CHAT_BASE}/message`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: JSON.stringify({ message, language: "en", session_id: sessionId }),
+  });
+  // Handle errors with status surfaced
+  if (!resp.ok) {
+    let body = {};
+    try { body = await resp.json(); } catch {}
+    const err = new Error(body?.message || `Send failed (${resp.status})`);
+    err.status = resp.status;
+    throw err;
+  }
+  return resp.json();
+}
+
+async function apiGetSessions() {
+  const resp = await fetch(`${CHAT_BASE}/history`, { headers: authHeaders() });
+  if (!resp.ok) throw new Error("Failed to get sessions");
+  return resp.json();
+}
+
+async function apiGetSessionMessages(sessionId) {
+  const resp = await fetch(`${CHAT_BASE}/history/${sessionId}`, {
+    headers: authHeaders(),
+  });
+  if (!resp.ok) throw new Error("Failed to get session messages");
+  return resp.json();
+}
+
+async function apiEndSession(sessionId) {
+  const resp = await fetch(`${CHAT_BASE}/session/${sessionId}/end`, {
+    method: "PUT",
+    headers: authHeaders(),
+    body: JSON.stringify({}),
+  });
+  if (!resp.ok) throw new Error("Failed to end session");
+  return resp.json();
+}
+
+// ==============================
+// Modal
+// ==============================
 const Modal = ({ message, onClose }) => {
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900 bg-opacity-80 transition-opacity duration-300 animate-fade-in">
@@ -24,6 +88,9 @@ const Modal = ({ message, onClose }) => {
   );
 };
 
+// ==============================
+// Page
+// ==============================
 const ChatbotPage = () => {
   const [messages, setMessages] = useState([
     {
@@ -35,52 +102,57 @@ const ChatbotPage = () => {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isListening, setIsListening] = useState(false);
+  const [online, setOnline] = useState(true);
+  const [sessionId, setSessionId] = useState(undefined);
+  const [showModal, setShowModal] = useState(null);
+
   const messagesEndRef = useRef(null);
   const recognitionRef = useRef(null);
   const navigate = useNavigate();
 
+  // Scroll to bottom on new message
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  // Speech recognition
   useEffect(() => {
-    // Initialize speech recognition
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    
+    const SpeechRecognition =
+      window.SpeechRecognition || window.webkitSpeechRecognition;
+
     if (SpeechRecognition) {
       const recognition = new SpeechRecognition();
       recognition.continuous = false;
       recognition.interimResults = false;
-      recognition.lang = 'en-US';
-      
+      recognition.lang = "en-US";
+
       recognition.onresult = (event) => {
         const transcript = event.results[0][0].transcript;
-        setInput(prev => prev + transcript);
+        setInput((prev) => prev + transcript);
         setIsListening(false);
       };
-      
+
       recognition.onerror = (event) => {
-        console.error('Speech recognition error', event.error);
+        console.error("Speech recognition error", event.error);
         setIsListening(false);
       };
-      
+
       recognition.onend = () => {
         setIsListening(false);
       };
-      
+
       recognitionRef.current = recognition;
     } else {
-      console.warn('Speech recognition not supported in this browser');
+      console.warn("Speech recognition not supported in this browser");
     }
-    
+
     return () => {
-      if (recognitionRef.current) {
-        recognitionRef.current.stop();
-      }
+      if (recognitionRef.current) recognitionRef.current.stop();
     };
   }, []);
 
   const toggleListening = () => {
+    if (!recognitionRef.current) return;
     if (isListening) {
       recognitionRef.current.stop();
       setIsListening(false);
@@ -90,59 +162,39 @@ const ChatbotPage = () => {
     }
   };
 
-  // Function to navigate to voice chat page
-  const goToVoiceChat = () => {
-    navigate('/voicechat');
-  };
+  const goToVoiceChat = () => navigate("/voicechat");
 
-  const getBotReply = async (userMessage) => {
-    // Construct chat history payload for Gemini API
-    let chatHistory = messages.map((msg) => ({
-      role: msg.sender === "user" ? "user" : "model",
-      parts: [{ text: msg.text }],
-    }));
-    chatHistory.push({ role: "user", parts: [{ text: userMessage }] });
-
-    const payload = {
-      contents: chatHistory,
-      generationConfig: {
-        responseMimeType: "text/plain",
-      },
-    };
-    const apiKey = ""; // <-- Add your API key here
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
-
-    const maxRetries = 5;
-    let retries = 0;
-    let response;
-
-    while (retries < maxRetries) {
+  // Initial load: status + latest session
+  useEffect(() => {
+    (async () => {
       try {
-        response = await fetch(apiUrl, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
-        if (response.ok) break;
-      } catch (error) {
-        console.error("Fetch failed, retrying...", error);
+        const status = await apiGetStatus();
+        setOnline(!!status.glucomate_available);
+
+        const hist = await apiGetSessions();
+        if (hist.sessions?.length) {
+          const latestId = hist.sessions[0].id;
+          const full = await apiGetSessionMessages(latestId);
+          setSessionId(latestId);
+
+          const mapped = full.messages.map((m) => ({
+            id: m.id,
+            sender: m.sender === "user" ? "user" : "bot",
+            text: m.text,
+          }));
+
+          setMessages((prev) => [prev[0], ...mapped]); // keep welcome then history
+        }
+      } catch (e) {
+        setOnline(false);
+        setShowModal(
+          "Could not connect to GlucoMate. Ensure you are logged in (JWT present) and CORS is allowed."
+        );
       }
-      retries++;
-      await new Promise((res) => setTimeout(res, 2 ** retries * 1000));
-    }
+    })();
+  }, []);
 
-    if (!response || !response.ok) {
-      console.error("API call failed after multiple retries");
-      return "Sorry, I am unable to connect right now. Please try again later.";
-    }
-
-    const result = await response.json();
-    return (
-      result?.candidates?.[0]?.content?.parts?.[0]?.text ||
-      "Sorry, I couldn't generate a response."
-    );
-  };
-
+  // Send message -> backend
   const handleSubmit = async (e) => {
     e.preventDefault();
     const userMessageText = input.trim();
@@ -154,57 +206,81 @@ const ChatbotPage = () => {
     setIsLoading(true);
 
     try {
-      const botResponseText = await getBotReply(userMessageText);
-      const botMessage = {
-        id: Date.now() + 1,
-        sender: "bot",
-        text: botResponseText,
-      };
-      setMessages((prev) => [...prev, botMessage]);
-    } catch (error) {
-      console.error("Error getting bot response:", error);
+      const data = await apiSendMessage(userMessageText, sessionId);
+      setSessionId(data.session_id);
+
       setMessages((prev) => [
         ...prev,
         {
-          id: Date.now() + 1,
+          id: data.bot_response.id || Date.now() + 1,
           sender: "bot",
-          text: "Oops! Something went wrong. Please try again.",
+          text: data.bot_response.text,
         },
+      ]);
+    } catch (err) {
+      console.error("Send failed:", err);
+      if (err?.status === 401) {
+        setShowModal("Your session expired. Please log in again.");
+      } else if (err?.status === 503) {
+        setShowModal("GlucoMate is temporarily unavailable. Try again shortly.");
+      } else if (err?.status === 400) {
+        setShowModal(err.message || "Invalid request.");
+      } else {
+        setShowModal("Something went wrong. Please try again.");
+      }
+
+      setMessages((prev) => [
+        ...prev,
+        { id: Date.now() + 1, sender: "bot", text: "Error sending message." },
       ]);
     } finally {
       setIsLoading(false);
     }
   };
 
+  const endSession = async () => {
+    if (!sessionId) return;
+    try {
+      await apiEndSession(sessionId);
+      setMessages((prev) => [
+        ...prev,
+        { id: Date.now(), sender: "bot", text: "Session ended. Start a new message to begin again." },
+      ]);
+      setSessionId(undefined);
+    } catch (e) {
+      setShowModal("Could not end session.");
+    }
+  };
+
   return (
     <div className="min-h-screen bg-white text-gray-800 flex flex-col items-center justify-center px-4 py-12 font-sans">
       <div className="relative max-w-2xl w-full bg-white rounded-2xl shadow-xl border border-gray-100 z-10 flex flex-col h-[600px] md:h-[700px] overflow-hidden">
-        {/* Chatbot Header */}
-        <div className="p-6 bg-red-800 text-white flex items-center justify-center rounded-t-2xl shadow-sm">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className="h-8 w-8 mr-3"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            strokeWidth={2}
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M8 10h.01M12 10h.00M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"
-            />
-          </svg>
-          <h2 className="text-3xl font-bold tracking-tight">GlucoMate Chatbot</h2>
+        {/* Header */}
+        <div className="p-6 bg-red-800 text-white flex items-center justify-between rounded-t-2xl shadow-sm">
+          <div className="flex items-center">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-8 w-8 mr-3"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2}
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M8 10h.01M12 10h.00M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"
+              />
+            </svg>
+            <h2 className="text-3xl font-bold tracking-tight">GlucoMate Chatbot</h2>
+          </div>
+          <div className="text-sm">{online ? "Online" : "Offline"}</div>
         </div>
 
-        {/* Chat messages area */}
+        {/* Messages */}
         <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-gray-50">
           {messages.map(({ id, sender, text }) => (
-            <div
-              key={id}
-              className={`flex ${sender === "user" ? "justify-end" : "justify-start"}`}
-            >
+            <div key={id} className={`flex ${sender === "user" ? "justify-end" : "justify-start"}`}>
               <div
                 className={`max-w-[85%] sm:max-w-[70%] px-5 py-3 rounded-2xl shadow-md transform transition-all duration-300 ${
                   sender === "user"
@@ -226,7 +302,7 @@ const ChatbotPage = () => {
           <div ref={messagesEndRef} />
         </div>
 
-        {/* Input form */}
+        {/* Input */}
         <form onSubmit={handleSubmit} className="p-6 border-t border-gray-100 bg-white">
           <div className="flex items-center space-x-4">
             <div className="relative flex-grow">
@@ -235,53 +311,77 @@ const ChatbotPage = () => {
                 placeholder="Ask me about your health..."
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                className="w-full rounded-full border border-gray-300 px-6 py-3 text-lg focus:outline-none focus:border-red-700 focus:ring-1 focus:ring-red-700 transition-all duration-300 pr-12"
+                className="w-full rounded-full border border-gray-300 px-6 py-3 text-lg focus:outline-none focus:border-red-700 focus:ring-1 focus:ring-red-700 transition-all duration-300 pr-28"
                 disabled={isLoading}
-                onKeyPress={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    handleSubmit(e);
-                  }
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) handleSubmit(e);
                 }}
               />
-              <button
-                type="button"
-                onClick={toggleListening}
-                disabled={isLoading}
-                className={`absolute right-3 top-1/2 transform -translate-y-1/2 p-2 rounded-full ${
-                  isListening 
-                    ? "bg-red-800 text-white animate-pulse" 
-                    : "text-gray-500 hover:text-red-800 hover:bg-gray-100"
-                } transition-colors duration-300`}
-              >
-                <svg 
-                  xmlns="http://www.w3.org/2000/svg" 
-                  className="h-6 w-6" 
-                  fill="none" 
-                  viewBox="0 0 24 24" 
-                  stroke="currentColor"
+              <div className="absolute right-3 top-1/2 -translate-y-1/2 flex gap-2">
+                <button
+                  type="button"
+                  onClick={toggleListening}
+                  disabled={isLoading || !recognitionRef.current}
+                  className={`p-2 rounded-full ${
+                    isListening
+                      ? "bg-red-800 text-white animate-pulse"
+                      : "text-gray-500 hover:text-red-800 hover:bg-gray-100"
+                  } transition-colors duration-300`}
+                  title="Dictate"
                 >
-                  <path 
-                    strokeLinecap="round" 
-                    strokeLinejoin="round" 
-                    strokeWidth={2} 
-                    d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" 
-                  />
-                </svg>
-              </button>
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-6 w-6"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"
+                    />
+                  </svg>
+                </button>
+                <button
+                  type="button"
+                  onClick={goToVoiceChat}
+                  className={`bg-red-800 text-white font-semibold p-2 rounded-full shadow-lg hover:bg-red-900 transition-colors duration-300 transform active:scale-95 ${
+                    isLoading ? "opacity-50 cursor-not-allowed" : ""
+                  }`}
+                  disabled={isLoading}
+                  title="Voice Chat Page"
+                >
+                  <AudioLines size={20} />
+                </button>
+              </div>
             </div>
+
             <button
-              type="button"
-              onClick={goToVoiceChat}
-              className={`bg-red-800 text-white font-semibold p-3 rounded-full shadow-lg hover:bg-red-900 transition-colors duration-300 transform active:scale-95 ${
+              type="submit"
+              className={`bg-red-800 text-white font-semibold px-5 py-3 rounded-full shadow-lg hover:bg-red-900 transition-colors duration-300 transform active:scale-95 ${
                 isLoading ? "opacity-50 cursor-not-allowed" : ""
               }`}
               disabled={isLoading}
             >
-              <AudioLines size={24} />
+              Send
+            </button>
+
+            <button
+              type="button"
+              onClick={endSession}
+              disabled={!sessionId}
+              className="px-4 py-3 rounded-full border border-gray-300 text-gray-700 hover:bg-gray-100"
+              title="End session"
+            >
+              End
             </button>
           </div>
         </form>
       </div>
+
+      {showModal && <Modal message={showModal} onClose={() => setShowModal(null)} />}
     </div>
   );
 };
