@@ -1,9 +1,6 @@
 
 # Glucomate-team3
 
-<div align="center">
-  <img src="logo.png" alt="GlucoMate Logo" width="200"/>
-</div>
 
 Your friendly diabetes companion. Track what matters, learn what helps, and chat with an AI that meets you where you are.
 
