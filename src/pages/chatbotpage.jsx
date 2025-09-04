@@ -5,9 +5,6 @@ import Header from "../components/header";
 import { AudioLines } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
-// ==============================
-// Inlined API (no separate .js)
-// ==============================
 const API_BASE = import.meta.env.VITE_API_URL || "http://127.0.0.1:5000";
 const CHAT_BASE = `${API_BASE}/api/v1/chat`;
 
@@ -66,9 +63,6 @@ async function apiEndSession(sessionId) {
   return resp.json();
 }
 
-// ==============================
-// Modal
-// ==============================
 const Modal = ({ message, onClose }) => {
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900 bg-opacity-80 transition-opacity duration-300 animate-fade-in">
@@ -88,9 +82,6 @@ const Modal = ({ message, onClose }) => {
   );
 };
 
-// ==============================
-// Page
-// ==============================
 const ChatbotPage = () => {
   const [messages, setMessages] = useState([
     {
@@ -110,12 +101,10 @@ const ChatbotPage = () => {
   const recognitionRef = useRef(null);
   const navigate = useNavigate();
 
-  // Scroll to bottom on new message
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Speech recognition
   useEffect(() => {
     const SpeechRecognition =
       window.SpeechRecognition || window.webkitSpeechRecognition;
